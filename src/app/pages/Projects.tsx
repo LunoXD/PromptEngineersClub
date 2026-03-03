@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { ExternalLink, Github } from "lucide-react";
+import { ScrollReveal } from "../components/ScrollReveal";
 
 const projects = [
   {
@@ -46,80 +48,105 @@ const projects = [
   },
 ];
 
+const statusConfig: Record<string, { badge: string; dot: string }> = {
+  Completed: { badge: "bg-emerald-50 text-emerald-700 border border-emerald-200", dot: "bg-emerald-500" },
+  "In Progress": { badge: "bg-blue-50 text-blue-700 border border-blue-200", dot: "bg-blue-500" },
+  Planning: { badge: "bg-amber-50 text-amber-700 border border-amber-200", dot: "bg-amber-400" },
+};
+
+const filters = ["All", "Completed", "In Progress", "Planning"];
+
 export function Projects() {
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Completed":
-        return "bg-green-100 text-green-800";
-      case "In Progress":
-        return "bg-blue-100 text-blue-800";
-      case "Planning":
-        return "bg-yellow-100 text-yellow-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
+  const [activeFilter, setActiveFilter] = useState("All");
+
+  const filtered =
+    activeFilter === "All"
+      ? projects
+      : projects.filter((p) => p.status === activeFilter);
 
   return (
     <div className="py-16 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Our Projects</h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+        <ScrollReveal className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight">Our Projects</h1>
+          <p className="text-lg text-gray-500 max-w-2xl mx-auto leading-relaxed">
             Explore our innovative projects that push the boundaries of engineering and technology.
           </p>
-        </div>
+        </ScrollReveal>
+
+        {/* Filter Bar */}
+        <ScrollReveal delay={100} className="flex flex-wrap gap-2 justify-center mb-12">
+          {filters.map((f) => (
+            <button
+              key={f}
+              onClick={() => setActiveFilter(f)}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                activeFilter === f
+                  ? "bg-black text-white shadow-md"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {f}
+            </button>
+          ))}
+        </ScrollReveal>
 
         {/* Projects Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {projects.map((project, index) => (
-            <div
-              key={index}
-              className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
-            >
-              <div className="aspect-video overflow-hidden bg-gray-100">
-                <ImageWithFallback
-                  src={project.image}
-                  alt={project.title}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="p-6">
-                <div className="flex items-start justify-between mb-3">
-                  <h3 className="text-xl font-semibold flex-1">{project.title}</h3>
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full ${getStatusColor(
-                      project.status
-                    )}`}
-                  >
-                    {project.status}
-                  </span>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filtered.map((project, index) => {
+            const s = statusConfig[project.status] ?? {
+              badge: "bg-gray-50 text-gray-700 border border-gray-200",
+              dot: "bg-gray-400",
+            };
+            return (
+              <ScrollReveal key={index} delay={(index % 3) * 80}>
+                <div className="group bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-full">
+                  {/* Image */}
+                  <div className="aspect-video overflow-hidden bg-gray-100 relative">
+                    <ImageWithFallback
+                      src={project.image}
+                      alt={project.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-6 flex flex-col flex-1">
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <h3 className="text-lg font-semibold leading-snug flex-1">{project.title}</h3>
+                      <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium whitespace-nowrap flex-shrink-0 ${s.badge}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+                        {project.status}
+                      </span>
+                    </div>
+                    <p className="text-gray-500 text-sm mb-4 leading-relaxed flex-1">{project.description}</p>
+                    <div className="flex flex-wrap gap-1.5 mb-5">
+                      {project.tags.map((tag, tagIndex) => (
+                        <span
+                          key={tagIndex}
+                          className="text-xs px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex gap-2 pt-4 border-t border-gray-100">
+                      <button className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors flex-1 justify-center font-medium">
+                        <Github size={14} />
+                        Code
+                      </button>
+                      <button className="flex items-center gap-1.5 px-3 py-2 text-sm bg-black text-white rounded-lg hover:bg-gray-800 transition-colors flex-1 justify-center font-medium">
+                        <ExternalLink size={14} />
+                        Details
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-gray-600 mb-4">{project.description}</p>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {project.tags.map((tag, tagIndex) => (
-                    <span
-                      key={tagIndex}
-                      className="text-xs px-3 py-1 bg-gray-100 text-gray-700 rounded-full"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-                <div className="flex gap-3">
-                  <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                    <Github size={16} />
-                    <span className="text-sm">Code</span>
-                  </button>
-                  <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                    <ExternalLink size={16} />
-                    <span className="text-sm">Details</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+              </ScrollReveal>
+            );
+          })}
         </div>
       </div>
     </div>

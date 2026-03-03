@@ -1,98 +1,80 @@
-import { Calendar, Clock, MapPin, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import { ScrollReveal } from "../components/ScrollReveal";
 
 const upcomingEvents = [
   {
-    title: "Tech Workshop: Introduction to Machine Learning",
-    date: "March 15, 2026",
-    time: "2:00 PM - 5:00 PM",
-    location: "Engineering Building, Room 301",
+    title: "Prompt Foundations: AI Thinking Workshop",
+    type: "Prompt Lab",
     attendees: 45,
-    type: "Workshop",
     description:
-      "Hands-on workshop covering the fundamentals of machine learning and practical applications.",
+      "Hands-on session focused on crafting structured, high-impact prompts for real-world AI applications.",
   },
   {
-    title: "Project Presentation Day",
-    date: "March 22, 2026",
-    time: "10:00 AM - 4:00 PM",
-    location: "Main Auditorium",
+    title: "Prompt to Product Showcase",
+    type: "Build With AI",
     attendees: 120,
-    type: "Event",
     description:
-      "Showcase of all ongoing and completed projects by club members with live demonstrations.",
+      "Members present AI solutions built using advanced prompting strategies and creative workflows.",
   },
   {
-    title: "Guest Lecture: Future of Robotics",
-    date: "April 5, 2026",
-    time: "3:00 PM - 4:30 PM",
-    location: "Conference Hall A",
+    title: "Future of AI Systems",
+    type: "Expert Session",
     attendees: 80,
-    type: "Lecture",
     description:
-      "Industry expert discussing emerging trends and career opportunities in robotics engineering.",
+      "Industry insights into emerging AI trends, automation, and the power of intelligent prompting.",
   },
   {
-    title: "Hackathon 2026",
-    date: "April 18-19, 2026",
-    time: "9:00 AM - 9:00 AM",
-    location: "Computer Science Building",
+    title: "Prompt Hack Battle",
+    type: "AI Competition",
     attendees: 150,
-    type: "Competition",
     description:
-      "24-hour coding marathon to build innovative solutions for real-world engineering problems.",
+      "High-intensity challenge to design, optimize, and deploy powerful prompts under pressure.",
   },
   {
-    title: "Team Building & Networking Event",
-    date: "May 3, 2026",
-    time: "6:00 PM - 9:00 PM",
-    location: "Campus Green Area",
+    title: "AI Builders Connect",
+    type: "Community Session",
     attendees: 60,
-    type: "Social",
     description:
-      "Casual gathering for members to connect, share ideas, and build lasting relationships.",
+      "Collaborative networking session to share ideas, strategies, and innovative prompt techniques.",
   },
 ];
 
 const recurringSchedule = [
   {
-    day: "Monday",
-    activity: "General Meeting",
-    time: "5:00 PM – 6:30 PM",
-    location: "Room 205",
+    title: "Open Prompt Practice",
+    description:
+      "Weekly collaborative session to experiment with new prompting frameworks and AI tools.",
   },
   {
-    day: "Wednesday",
-    activity: "Project Work Sessions",
-    time: "4:00 PM – 7:00 PM",
-    location: "Lab 3",
+    title: "AI Project Build Sprint",
+    description:
+      "Focused team-based building session to turn prompts into working AI-powered solutions.",
   },
   {
-    day: "Friday",
-    activity: "Coding Club",
-    time: "3:00 PM – 5:00 PM",
-    location: "Computer Lab 1",
+    title: "Prompt Optimization Circle",
+    description:
+      "Deep dive into refining and benchmarking prompts for better accuracy and performance.",
   },
 ];
 
 const eventTypeConfig: Record<string, { badge: string; border: string }> = {
-  Workshop: {
+  "Prompt Lab": {
     badge: "bg-purple-50 text-purple-700 border border-purple-200",
     border: "border-purple-400",
   },
-  Event: {
-    badge: "bg-blue-50 text-blue-700 border border-blue-200",
-    border: "border-blue-400",
+  "Build With AI": {
+    badge: "bg-indigo-50 text-indigo-700 border border-indigo-200",
+    border: "border-indigo-400",
   },
-  Lecture: {
+  "Expert Session": {
     badge: "bg-emerald-50 text-emerald-700 border border-emerald-200",
     border: "border-emerald-400",
   },
-  Competition: {
+  "AI Competition": {
     badge: "bg-red-50 text-red-700 border border-red-200",
     border: "border-red-400",
   },
-  Social: {
+  "Community Session": {
     badge: "bg-amber-50 text-amber-700 border border-amber-200",
     border: "border-amber-400",
   },
@@ -100,23 +82,28 @@ const eventTypeConfig: Record<string, { badge: string; border: string }> = {
 
 export function Plans() {
   return (
-    <div className="py-16 px-4 sm:px-6 lg:px-8">
+    <div className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
       <div className="max-w-7xl mx-auto">
+        
+        {/* Header */}
         <ScrollReveal className="text-center mb-16">
           <h1 className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight">
-            Plans & Events
+            Prompt Roadmap
           </h1>
           <p className="text-lg text-gray-500 max-w-2xl mx-auto leading-relaxed">
-            Stay updated with our upcoming events, workshops, and regular
-            activities.
+            Explore our active prompt sessions, AI challenges, and collaborative innovation tracks.
           </p>
         </ScrollReveal>
 
-        <div className="mb-16">
+        {/* Active Prompt Sessions */}
+        <div className="mb-20">
           <ScrollReveal>
-            <h2 className="text-2xl font-bold mb-8">Upcoming Events</h2>
+            <h2 className="text-2xl font-bold mb-8">
+              Active Prompt Sessions
+            </h2>
           </ScrollReveal>
-          <div className="space-y-4">
+
+          <div className="space-y-6">
             {upcomingEvents.map((event, index) => {
               const cfg = eventTypeConfig[event.type] ?? {
                 badge: "bg-gray-50 text-gray-700 border border-gray-200",
@@ -124,44 +111,35 @@ export function Plans() {
               };
 
               return (
-                <ScrollReveal key={index} delay={index * 60}>
+                <ScrollReveal key={index} delay={index * 80}>
                   <div
-                    className={`bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-lg transition-all duration-300 border-l-4 ${cfg.border}`}
+                    className={`bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 border-l-4 ${cfg.border}`}
                   >
-                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                    <div className="flex flex-col md:flex-row md:justify-between gap-6">
                       <div className="flex-1">
-                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <div className="flex flex-wrap items-center gap-3 mb-3">
                           <span
-                            className={`text-xs px-2.5 py-1 rounded-full font-medium ${cfg.badge}`}
+                            className={`text-xs px-3 py-1 rounded-full font-medium ${cfg.badge}`}
                           >
                             {event.type}
                           </span>
-                          <h3 className="text-lg font-semibold">{event.title}</h3>
+                          <h3 className="text-xl font-semibold">
+                            {event.title}
+                          </h3>
                         </div>
-                        <p className="text-gray-500 text-sm mb-4 leading-relaxed">
+
+                        <p className="text-gray-600 text-sm leading-relaxed mb-4">
                           {event.description}
                         </p>
-                        <div className="grid sm:grid-cols-2 gap-2">
-                          <div className="flex items-center gap-2 text-gray-600 text-sm">
-                            <Calendar size={14} className="flex-shrink-0" />
-                            {event.date}
-                          </div>
-                          <div className="flex items-center gap-2 text-gray-600 text-sm">
-                            <Clock size={14} className="flex-shrink-0" />
-                            {event.time}
-                          </div>
-                          <div className="flex items-center gap-2 text-gray-600 text-sm">
-                            <MapPin size={14} className="flex-shrink-0" />
-                            {event.location}
-                          </div>
-                          <div className="flex items-center gap-2 text-gray-600 text-sm">
-                            <Users size={14} className="flex-shrink-0" />
-                            {event.attendees} registered
-                          </div>
+
+                        <div className="flex items-center gap-2 text-gray-600 text-sm">
+                          <Users size={15} />
+                          {event.attendees} members participating
                         </div>
                       </div>
-                      <button className="bg-black text-white px-5 py-2.5 rounded-xl hover:bg-gray-800 active:scale-95 transition-all text-sm font-medium whitespace-nowrap self-start">
-                        Register
+
+                      <button className="bg-black text-white px-6 py-2.5 rounded-xl hover:bg-gray-800 active:scale-95 transition-all text-sm font-medium whitespace-nowrap self-start">
+                        Join Session
                       </button>
                     </div>
                   </div>
@@ -171,61 +149,40 @@ export function Plans() {
           </div>
         </div>
 
+        {/* Prompt Practice Schedule */}
         <div>
           <ScrollReveal>
-            <h2 className="text-2xl font-bold mb-8">Weekly Schedule</h2>
+            <h2 className="text-2xl font-bold mb-8">
+              Prompt Practice Tracks
+            </h2>
           </ScrollReveal>
-          <ScrollReveal delay={80}>
-            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                        Day
-                      </th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                        Activity
-                      </th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                        Time
-                      </th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                        Location
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {recurringSchedule.map((schedule, index) => (
-                      <tr key={index} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 font-semibold text-sm">
-                          {schedule.day}
-                        </td>
-                        <td className="px-6 py-4 text-sm">{schedule.activity}</td>
-                        <td className="px-6 py-4 text-sm text-gray-500">
-                          {schedule.time}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-500">
-                          {schedule.location}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </ScrollReveal>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {recurringSchedule.map((item, index) => (
+              <ScrollReveal key={index} delay={index * 100}>
+                <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 hover:shadow-md transition-all duration-300">
+                  <h3 className="text-lg font-semibold mb-3">
+                    {item.title}
+                  </h3>
+                  <p className="text-gray-600 text-sm leading-relaxed">
+                    {item.description}
+                  </p>
+                </div>
+              </ScrollReveal>
+            ))}
+          </div>
         </div>
 
-        <ScrollReveal delay={100}>
-          <div className="mt-8 p-6 bg-gray-50 border border-gray-200 rounded-2xl">
-            <p className="text-gray-600 text-sm">
-              <strong className="text-gray-800">Note:</strong> All events and
-              schedules are subject to change. Please check back regularly for
-              updates or join our mailing list for notifications.
+        {/* Note Section */}
+        <ScrollReveal delay={120}>
+          <div className="mt-12 p-6 bg-purple-50 border border-purple-200 rounded-2xl">
+            <p className="text-purple-800 text-sm">
+              <strong>Note:</strong> Session tracks evolve continuously as we
+              explore new AI systems, prompt frameworks, and innovation strategies.
             </p>
           </div>
         </ScrollReveal>
+
       </div>
     </div>
   );

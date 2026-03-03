@@ -27,17 +27,17 @@ export function Contact() {
     {
       icon: Mail,
       title: "Email",
-      lines: ["contact@promptengineering.club", "president@promptengineering.club"],
+      lines: ["2400030024@kluniversity.in", "deepak.yaramala@gmail.com"],
     },
     {
       icon: Phone,
       title: "Phone",
-      lines: ["+1 (555) 123-4567", "Mon–Fri, 9:00 AM – 5:00 PM"],
+      lines: ["8074524800","9347301082", "Mon–Fri, 9:00 AM – 5:00 PM"],
     },
     {
       icon: MapPin,
       title: "Location",
-      lines: ["Engineering Building, Room 205", "University Campus"],
+      lines: ["SAC-HALL, Room :R-006", "University Campus"],
     },
   ];
 
@@ -78,11 +78,12 @@ export function Contact() {
               </div>
 
               <div className="p-6 bg-gray-50 border border-gray-200 rounded-2xl">
-                <h3 className="font-semibold mb-3">Office Hours</h3>
+                <h3 className="font-semibold mb-3">Club Hours</h3>
                 <div className="space-y-1 text-sm text-gray-500">
-                  <p>Monday – Friday: 2:00 PM – 6:00 PM</p>
-                  <p>Saturday: 10:00 AM – 2:00 PM</p>
-                  <p>Sunday: Closed</p>
+                  <p>Monday – Friday: 6:00 PM – 7:00 PM</p>
+                  <p>Saturday,Sunday: Closed</p>
+                   
+          
                 </div>
               </div>
             </div>

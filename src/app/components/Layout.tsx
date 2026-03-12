@@ -1,94 +1,48 @@
-import { Outlet, NavLink, Link } from "react-router";
-import { Menu, X, Github, Twitter, Linkedin } from "lucide-react";
-import { useState } from "react";
+import { Outlet, Link, useLocation } from "react-router";
+import { Github, Twitter, Linkedin } from "lucide-react";
+import PillNav from "./PillNav";
+import logo from "../../assets/logo.svg";
+
+const navItems = [
+  { label: "Home", href: "/" },
+  { label: "Team", href: "/team" },
+  { label: "Projects", href: "/projects" },
+  { label: "Plans", href: "/plans" },
+  { label: "Contact", href: "/contact" },
+];
+
+const footerLinks = [
+  { to: "/team", label: "Team" },
+  { to: "/projects", label: "Projects" },
+  { to: "/plans", label: "Plans & Events" },
+  { to: "/contact", label: "Contact" },
+];
 
 export function Layout() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const navLinks = [
-    { to: "/team", label: "Team" },
-    { to: "/projects", label: "Projects" },
-    { to: "/plans", label: "Plans" },
-    { to: "/contact", label: "Contact Us" },
-  ];
-
-  const footerLinks = [
-    { to: "/team", label: "Team" },
-    { to: "/projects", label: "Projects" },
-    { to: "/plans", label: "Plans & Events" },
-    { to: "/contact", label: "Contact" },
-  ];
+  const { pathname } = useLocation();
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Navigation */}
-      <nav className="fixed top-0 w-full bg-white/90 backdrop-blur-md border-b border-gray-200/80 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <NavLink to="/" className="flex items-center space-x-2.5 group">
-              <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform">
-                <span className="text-white font-bold text-sm">PE</span>
-              </div>
-              <span className="font-semibold text-lg tracking-tight">Prompt Engineering Club</span>
-            </NavLink>
-
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-1">
-              {navLinks.map((link) => (
-                <NavLink
-                  key={link.to}
-                  to={link.to}
-                  className={({ isActive }) =>
-                    `px-4 py-2 rounded-lg text-sm transition-all ${
-                      isActive
-                        ? "text-black font-medium bg-gray-100"
-                        : "text-gray-600 hover:text-black hover:bg-gray-50"
-                    }`
-                  }
-                >
-                  {link.label}
-                </NavLink>
-              ))}
-            </div>
-
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
-            </button>
-          </div>
+    <div className="min-h-screen">
+      {/* Pill Navigation — fixed, centered at top */}
+      <div className="fixed top-4 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
+        <div className="pointer-events-auto">
+          <PillNav
+            logo={logo}
+            logoAlt="PE"
+            items={navItems}
+            activeHref={pathname}
+            baseColor="#111111"
+            pillColor="#ffffff"
+            pillTextColor="#111111"
+            hoveredPillTextColor="#ffffff"
+            ease="power2.out"
+            initialLoadAnimation={false}
+          />
         </div>
-
-        {/* Mobile Navigation */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-200 bg-white">
-            <div className="px-4 py-3 space-y-1">
-              {navLinks.map((link) => (
-                <NavLink
-                  key={link.to}
-                  to={link.to}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={({ isActive }) =>
-                    `block px-4 py-2.5 rounded-lg transition-colors text-sm ${
-                      isActive
-                        ? "text-black font-medium bg-gray-100"
-                        : "text-gray-600 hover:text-black hover:bg-gray-50"
-                    }`
-                  }
-                >
-                  {link.label}
-                </NavLink>
-              ))}
-            </div>
-          </div>
-        )}
-      </nav>
+      </div>
 
       {/* Main Content */}
-      <main className="pt-16">
+      <main className="pt-20">
         <Outlet />
       </main>
 

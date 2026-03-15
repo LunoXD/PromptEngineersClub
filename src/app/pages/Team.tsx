@@ -1,47 +1,35 @@
+import { useEffect, useState } from "react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { Linkedin, Github, Mail } from "lucide-react";
 import { ScrollReveal } from "../components/ScrollReveal";
-
-const teamMembers = [
-  {
-    name: "Alex Johnson",
-    role: "President",
-    image: "https://images.unsplash.com/photo-1747811853766-7a6612797dc9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBlbmdpbmVlciUyMHBvcnRyYWl0fGVufDF8fHx8MTc3MjM2NjY5NXww&ixlib=rb-4.1.0&q=80&w=1080",
-    bio: "Passionate about robotics and automation. Leading our club towards innovation.",
-  },
-  {
-    name: "Sarah Martinez",
-    role: "Vice President",
-    image: "https://images.unsplash.com/photo-1580983218547-8333cb1d76b9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3b21hbiUyMGVuZ2luZWVyJTIwcHJvZmVzc2lvbmFsfGVufDF8fHx8MTc3MjMzMTI5OHww&ixlib=rb-4.1.0&q=80&w=1080",
-    bio: "Software engineer with expertise in AI and machine learning applications.",
-  },
-  {
-    name: "Michael Chen",
-    role: "Technical Lead",
-    image: "https://images.unsplash.com/photo-1768796370407-6d36619e7d6d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0ZWFtJTIwY29sbGFib3JhdGlvbiUyMGVuZ2luZWVyaW5nfGVufDF8fHx8MTc3MjM2ODM5M3ww&ixlib=rb-4.1.0&q=80&w=1080",
-    bio: "Electronics and embedded systems specialist. Driving technical excellence.",
-  },
-  {
-    name: "Emily Davis",
-    role: "Project Manager",
-    image: "https://images.unsplash.com/photo-1767163934854-655747a35068?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0ZWNobm9sb2d5JTIwcHJvamVjdCUyMGlubm92YXRpb258ZW58MXx8fHwxNzcyNDU1MzM2fDA&ixlib=rb-4.1.0&q=80&w=1080",
-    bio: "Organizing and coordinating projects to ensure timely delivery and quality.",
-  },
-  {
-    name: "David Kim",
-    role: "Design Lead",
-    image: "https://images.unsplash.com/photo-1723730741647-caaea47ac90f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxyb2JvdGljcyUyMGVuZ2luZWVyaW5nJTIwcHJvamVjdHxlbnwxfHx8fDE3NzI0MDIzNjR8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    bio: "Mechanical design and prototyping expert with a passion for innovation.",
-  },
-  {
-    name: "Lisa Anderson",
-    role: "Events Coordinator",
-    image: "https://images.unsplash.com/photo-1557324232-b8917d3c3dcb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3ZWIlMjBkZXZlbG9wbWVudCUyMGNvZGluZ3xlbnwxfHx8fDE3NzI0MjYxODV8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    bio: "Organizing workshops, seminars, and club events to foster learning and growth.",
-  },
-];
+import { api, TeamMember } from "../lib/api";
 
 export function Team() {
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let mounted = true;
+    api
+      .getTeam()
+      .then((data) => {
+        if (!mounted) return;
+        setTeamMembers(data);
+      })
+      .catch((err) => {
+        if (!mounted) return;
+        setError(err instanceof Error ? err.message : "Failed to load team");
+      })
+      .finally(() => {
+        if (!mounted) return;
+        setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   return (
     <div className="py-16 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
@@ -54,9 +42,11 @@ export function Team() {
         </ScrollReveal>
 
         {/* Team Grid */}
+        {loading && <p className="text-center text-gray-400 mb-6">Loading team members...</p>}
+        {error && <p className="text-center text-red-400 mb-6">{error}</p>}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {teamMembers.map((member, index) => (
-            <ScrollReveal key={index} delay={(index % 3) * 80}>
+          {!loading && !error && teamMembers.map((member, index) => (
+            <ScrollReveal key={member._id} delay={(index % 3) * 80}>
               <div className="group bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
                 {/* Image with social overlay */}
                 <div className="aspect-square overflow-hidden bg-gray-100 relative">
@@ -67,15 +57,15 @@ export function Team() {
                   />
                   {/* Hover overlay with social icons */}
                   <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px] flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                    <button className="p-3 bg-white/15 border border-white/30 rounded-full hover:bg-white/30 transition-colors">
+                    <a href={member.linkedin || "#"} target="_blank" rel="noreferrer" className="p-3 bg-white/15 border border-white/30 rounded-full hover:bg-white/30 transition-colors">
                       <Linkedin size={18} className="text-white" />
-                    </button>
-                    <button className="p-3 bg-white/15 border border-white/30 rounded-full hover:bg-white/30 transition-colors">
+                    </a>
+                    <a href={member.github || "#"} target="_blank" rel="noreferrer" className="p-3 bg-white/15 border border-white/30 rounded-full hover:bg-white/30 transition-colors">
                       <Github size={18} className="text-white" />
-                    </button>
-                    <button className="p-3 bg-white/15 border border-white/30 rounded-full hover:bg-white/30 transition-colors">
+                    </a>
+                    <a href={member.email ? `mailto:${member.email}` : "#"} className="p-3 bg-white/15 border border-white/30 rounded-full hover:bg-white/30 transition-colors">
                       <Mail size={18} className="text-white" />
-                    </button>
+                    </a>
                   </div>
                 </div>
 

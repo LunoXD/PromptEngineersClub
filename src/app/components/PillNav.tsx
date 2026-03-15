@@ -242,10 +242,10 @@ const PillNav: React.FC<PillNavProps> = ({
             onMouseEnter={handleLogoEnter}
             role="menuitem"
             ref={el => { logoRef.current = el; }}
-            className="rounded-full p-2 inline-flex items-center justify-center overflow-hidden"
-            style={{ width: 'var(--nav-h)', height: 'var(--nav-h)', background: 'var(--base, #000)' }}
+            className="rounded-full p-1.5 inline-flex items-center justify-center overflow-hidden border border-white/20 shadow-[0_14px_30px_-20px_rgba(30,64,175,0.9)]"
+            style={{ width: 'var(--nav-h)', height: 'var(--nav-h)', background: 'linear-gradient(180deg, rgba(2,6,23,0.95), rgba(15,23,42,0.95))' }}
           >
-            <img src={logo} alt={logoAlt} ref={logoImgRef} className="w-full h-full object-contain block" />
+            <img src={logo} alt={logoAlt} ref={logoImgRef} className="w-full h-full object-contain block rounded-full" />
           </Link>
         ) : (
           <a
@@ -253,17 +253,17 @@ const PillNav: React.FC<PillNavProps> = ({
             aria-label="Home"
             onMouseEnter={handleLogoEnter}
             ref={el => { logoRef.current = el; }}
-            className="rounded-full p-2 inline-flex items-center justify-center overflow-hidden"
-            style={{ width: 'var(--nav-h)', height: 'var(--nav-h)', background: 'var(--base, #000)' }}
+            className="rounded-full p-1.5 inline-flex items-center justify-center overflow-hidden border border-white/20 shadow-[0_14px_30px_-20px_rgba(30,64,175,0.9)]"
+            style={{ width: 'var(--nav-h)', height: 'var(--nav-h)', background: 'linear-gradient(180deg, rgba(2,6,23,0.95), rgba(15,23,42,0.95))' }}
           >
-            <img src={logo} alt={logoAlt} ref={logoImgRef} className="w-full h-full object-contain block" />
+            <img src={logo} alt={logoAlt} ref={logoImgRef} className="w-full h-full object-contain block rounded-full" />
           </a>
         )}
 
         <div
           ref={navItemsRef}
-          className="relative items-center rounded-full hidden md:flex ml-2"
-          style={{ height: 'var(--nav-h)', background: 'var(--base, #000)' }}
+          className="relative items-center rounded-full hidden md:flex ml-2 border border-white/15 shadow-[0_18px_36px_-24px_rgba(15,23,42,0.95)]"
+          style={{ height: 'var(--nav-h)', background: 'linear-gradient(180deg, rgba(2,6,23,0.95), rgba(15,23,42,0.95))' }}
         >
           <ul
             role="menubar"
@@ -351,8 +351,8 @@ const PillNav: React.FC<PillNavProps> = ({
           onClick={toggleMobileMenu}
           aria-label="Toggle menu"
           aria-expanded={isMobileMenuOpen}
-          className="md:hidden rounded-full border-0 flex flex-col items-center justify-center gap-1 cursor-pointer p-0 relative"
-          style={{ width: 'var(--nav-h)', height: 'var(--nav-h)', background: 'var(--base, #000)' }}
+          className="md:hidden rounded-full border border-white/20 flex flex-col items-center justify-center gap-1 cursor-pointer p-0 relative shadow-[0_12px_24px_-16px_rgba(15,23,42,0.95)]"
+          style={{ width: 'var(--nav-h)', height: 'var(--nav-h)', background: 'linear-gradient(180deg, rgba(2,6,23,0.95), rgba(15,23,42,0.95))' }}
         >
           <span
             className="hamburger-line w-4 h-0.5 rounded origin-center"

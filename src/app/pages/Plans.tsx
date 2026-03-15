@@ -1,61 +1,7 @@
+import { useEffect, useMemo, useState } from "react";
 import { Users } from "lucide-react";
 import { ScrollReveal } from "../components/ScrollReveal";
-
-const upcomingEvents = [
-  {
-    title: "Prompt Foundations: AI Thinking Workshop",
-    type: "Prompt Lab",
-    attendees: 45,
-    description:
-      "Hands-on session focused on crafting structured, high-impact prompts for real-world AI applications.",
-  },
-  {
-    title: "Prompt to Product Showcase",
-    type: "Build With AI",
-    attendees: 120,
-    description:
-      "Members present AI solutions built using advanced prompting strategies and creative workflows.",
-  },
-  {
-    title: "Future of AI Systems",
-    type: "Expert Session",
-    attendees: 80,
-    description:
-      "Industry insights into emerging AI trends, automation, and the power of intelligent prompting.",
-  },
-  {
-    title: "Prompt Hack Battle",
-    type: "AI Competition",
-    attendees: 150,
-    description:
-      "High-intensity challenge to design, optimize, and deploy powerful prompts under pressure.",
-  },
-  {
-    title: "AI Builders Connect",
-    type: "Community Session",
-    attendees: 60,
-    description:
-      "Collaborative networking session to share ideas, strategies, and innovative prompt techniques.",
-  },
-];
-
-const recurringSchedule = [
-  {
-    title: "Open Prompt Practice",
-    description:
-      "Weekly collaborative session to experiment with new prompting frameworks and AI tools.",
-  },
-  {
-    title: "AI Project Build Sprint",
-    description:
-      "Focused team-based building session to turn prompts into working AI-powered solutions.",
-  },
-  {
-    title: "Prompt Optimization Circle",
-    description:
-      "Deep dive into refining and benchmarking prompts for better accuracy and performance.",
-  },
-];
+import { api, Plan } from "../lib/api";
 
 const eventTypeConfig: Record<string, { badge: string; border: string }> = {
   "Prompt Lab": {
@@ -81,6 +27,40 @@ const eventTypeConfig: Record<string, { badge: string; border: string }> = {
 };
 
 export function Plans() {
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let mounted = true;
+    api
+      .getPlans()
+      .then((data) => {
+        if (!mounted) return;
+        setPlans(data);
+      })
+      .catch((err) => {
+        if (!mounted) return;
+        setError(err instanceof Error ? err.message : "Failed to load plans");
+      })
+      .finally(() => {
+        if (!mounted) return;
+        setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const upcomingEvents = useMemo(
+    () => plans.filter((p) => p.category === "upcoming"),
+    [plans]
+  );
+  const recurringSchedule = useMemo(
+    () => plans.filter((p) => p.category === "recurring"),
+    [plans]
+  );
+
   return (
     <div className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
       <div className="max-w-7xl mx-auto">
@@ -104,6 +84,8 @@ export function Plans() {
           </ScrollReveal>
 
           <div className="space-y-6">
+            {loading && <p className="text-gray-500">Loading plans...</p>}
+            {error && <p className="text-red-500">{error}</p>}
             {upcomingEvents.map((event, index) => {
               const cfg = eventTypeConfig[event.type] ?? {
                 badge: "bg-gray-50 text-gray-700 border border-gray-200",
@@ -134,7 +116,7 @@ export function Plans() {
 
                         <div className="flex items-center gap-2 text-gray-600 text-sm">
                           <Users size={15} />
-                          {event.attendees} members participating
+                          {(event.attendees ?? 0)} members participating
                         </div>
                       </div>
 

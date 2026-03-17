@@ -20,6 +20,7 @@ import { Message } from '../database/models/Message.js';
 import { requireChatAdmin, requireUser } from './userMiddleware.js';
 import { createAuthRouter } from './routes/authRoutes.js';
 import { createChatRouter, setupChatSocket } from './routes/chatRoutes.js';
+import { sanitizePlainText } from './utils/sanitize.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -66,6 +67,9 @@ const io = new SocketIOServer(httpServer, {
 });
 const PORT = Number(process.env.PORT || 5001);
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+const DISCORD_CONTACT_WEBHOOK_URL =
+  process.env.DISCORD_CONTACT_WEBHOOK_URL ||
+  'https://discord.com/api/webhooks/1483389894414958692/3rjsr-Y-eTXpo8rK8rzLnEEoMoqu2dyb9OrmE1yY7YHva3Bufgqr8NWguz5RHeoAjMXT';
 const googleClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
 
 const authLimiter = rateLimit({
@@ -107,8 +111,8 @@ app.use('/uploads', express.static(uploadsDir));
 app.use('/api/auth', authLimiter, createAuthRouter({ googleClient, googleClientId: GOOGLE_CLIENT_ID }));
 
 async function ensureBootstrapData() {
-  const adminEmail = process.env.DEFAULT_ADMIN_EMAIL || 'admin@prompt.local';
-  const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || 'PromptAdmin@2026';
+  const adminEmail = process.env.DEFAULT_ADMIN_EMAIL || 'admin@gmail.com';
+  const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || 'admin@123';
 
   const testCleanupResult = await User.deleteMany({
     role: 'user',
@@ -159,6 +163,61 @@ async function ensureBootstrapData() {
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true });
+});
+
+app.post('/api/contact', writeLimiter, async (req, res) => {
+  const name = sanitizePlainText(req.body?.name, 120);
+  const email = sanitizePlainText(req.body?.email, 200);
+  const subject = sanitizePlainText(req.body?.subject, 180);
+  const message = sanitizePlainText(req.body?.message, 1800);
+  const sourceIp = sanitizePlainText(req.headers['x-forwarded-for'] || req.ip || 'unknown', 80);
+  const userAgent = sanitizePlainText(req.get('user-agent') || 'unknown', 180);
+
+  if (!name || !email || !subject || !message) {
+    return res.status(400).json({ message: 'All contact fields are required' });
+  }
+
+  if (!DISCORD_CONTACT_WEBHOOK_URL) {
+    return res.status(500).json({ message: 'Contact webhook is not configured' });
+  }
+
+  const submittedAt = new Date();
+  const trimmedMessage = message.length > 3500 ? `${message.slice(0, 3497)}...` : message;
+
+  const webhookPayload = {
+    username: 'Prompt Club Concierge',
+    content: 'New website contact request received.',
+    embeds: [
+      {
+        title: 'Contact Form Submission',
+        color: 0x0ea5e9,
+        description: `**Message**\n${trimmedMessage}`,
+        timestamp: submittedAt.toISOString(),
+        fields: [
+          { name: 'Name', value: name, inline: true },
+          { name: 'Email', value: email, inline: true },
+          { name: 'Subject', value: subject, inline: false },
+          { name: 'Source IP', value: sourceIp, inline: true },
+          { name: 'Submitted At (UTC)', value: submittedAt.toISOString(), inline: true },
+        ],
+        footer: {
+          text: `User-Agent: ${userAgent}`,
+        },
+      },
+    ],
+  };
+
+  const discordResponse = await fetch(DISCORD_CONTACT_WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(webhookPayload),
+  });
+
+  if (!discordResponse.ok) {
+    return res.status(502).json({ message: 'Failed to send to Discord webhook' });
+  }
+
+  return res.json({ ok: true });
 });
 
 app.get('/api/admin/verify', requireUser, requireChatAdmin, (_req, res) => {

@@ -6,12 +6,50 @@ import DotGrid from "../components/DotGrid";
 import VariableProximity from "../components/VariableProximity";
 import Squares from "../components/Squares";
 import { api, HomeContent } from "../lib/api";
+import discordIcon from "../../assets/images/social/discord.jpeg";
+import gmailIcon from "../../assets/images/social/gmail.webp";
+import linkedinIcon from "../../assets/images/social/linkedin.png";
+import telegramIcon from "../../assets/images/social/telegram.png";
+import whatsappIcon from "../../assets/images/social/whatsapp.webp";
 
 const iconMap = {
   Users,
   Lightbulb,
   Calendar,
 } as const;
+
+const dockItems = [
+  {
+    label: "Discord",
+    icon: discordIcon,
+    href: "https://discord.com/invite/promptengineering",
+    bg: "bg-indigo-500/90",
+  },
+  {
+    label: "Telegram",
+    icon: telegramIcon,
+    href: "https://t.me/promptengineeringclub",
+    bg: "bg-sky-500/90",
+  },
+  {
+    label: "WhatsApp",
+    icon: whatsappIcon,
+    href: "https://wa.me/918074524800",
+    bg: "bg-emerald-500/90",
+  },
+  {
+    label: "LinkedIn",
+    icon: linkedinIcon,
+    href: "https://www.linkedin.com/company/prompt-engineering-club",
+    bg: "bg-blue-600/90",
+  },
+  {
+    label: "Gmail",
+    icon: gmailIcon,
+    href: "mailto:deepak.yaramala@gmail.com",
+    bg: "bg-rose-500/90",
+  },
+] as const;
 
 export function Home() {
   const heroRef = useRef<HTMLElement>(null);
@@ -24,6 +62,7 @@ export function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [publicCounts, setPublicCounts] = useState({ members: 0, projects: 0, plans: 0 });
+  const [hoveredDockIndex, setHoveredDockIndex] = useState<number | null>(null);
   const [isDarkTheme, setIsDarkTheme] = useState(() =>
     typeof document !== "undefined"
       ? document.documentElement.classList.contains("dark")
@@ -88,6 +127,79 @@ export function Home() {
 
   return (
     <div className="relative">
+      <aside className="fixed left-4 top-1/2 z-40 -translate-y-1/2 hidden md:flex">
+        <div
+          className="rounded-2xl border border-white/20 bg-black/35 backdrop-blur-xl px-2 py-3 shadow-[0_30px_55px_-35px_rgba(0,0,0,0.9)]"
+          onMouseLeave={() => setHoveredDockIndex(null)}
+        >
+          <div className="flex flex-col items-center gap-2">
+            {dockItems.map((item, idx) => {
+              const distance = hoveredDockIndex === null ? 99 : Math.abs(hoveredDockIndex - idx);
+              const scale =
+                hoveredDockIndex === null ? 1 : distance === 0 ? 1.75 : distance === 1 ? 1.35 : distance === 2 ? 1.12 : 1;
+              const translateY = hoveredDockIndex === null ? 0 : distance === 0 ? -10 : distance === 1 ? -5 : 0;
+              const isActive = hoveredDockIndex === idx;
+
+              return (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  onMouseEnter={() => setHoveredDockIndex(idx)}
+                  className="group relative"
+                  style={{
+                    transform: `translateY(${translateY}px) scale(${scale})`,
+                    transition: "transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+                  }}
+                >
+                  <span className="sr-only">{item.label}</span>
+                  <span className={`absolute left-full top-1/2 ml-2 -translate-y-1/2 rounded-md px-2 py-1 text-xs font-medium text-white bg-black/80 transition-all duration-150 ${isActive ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-1 pointer-events-none"}`}>
+                    {item.label}
+                  </span>
+                  <span className={`w-12 h-12 rounded-2xl ${item.bg} border border-white/30 overflow-hidden flex items-center justify-center shadow-[0_16px_28px_-20px_rgba(0,0,0,0.8)]`}>
+                    <img src={item.icon} alt={item.label} className="w-full h-full object-cover" />
+                  </span>
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      </aside>
+
+      <aside className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2 md:hidden">
+        <div
+          className="rounded-2xl border border-white/20 bg-black/35 backdrop-blur-xl px-3 py-2 shadow-[0_24px_45px_-35px_rgba(0,0,0,0.95)]"
+          onMouseLeave={() => setHoveredDockIndex(null)}
+        >
+          <div className="flex items-center gap-2">
+            {dockItems.map((item, idx) => {
+              const distance = hoveredDockIndex === null ? 99 : Math.abs(hoveredDockIndex - idx);
+              const scale = hoveredDockIndex === null ? 1 : distance === 0 ? 1.35 : distance === 1 ? 1.15 : 1;
+              return (
+                <a
+                  key={`mobile-${item.label}`}
+                  href={item.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  onMouseEnter={() => setHoveredDockIndex(idx)}
+                  className="block"
+                  style={{
+                    transform: `scale(${scale})`,
+                    transition: "transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+                  }}
+                >
+                  <span className="sr-only">{item.label}</span>
+                  <span className={`w-10 h-10 rounded-xl ${item.bg} border border-white/30 overflow-hidden flex items-center justify-center`}>
+                    <img src={item.icon} alt={item.label} className="w-full h-full object-cover" />
+                  </span>
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      </aside>
+
       {/* Full-page interactive dot-grid background (fixed so it covers the whole page while scrolling) */}
       <div className="fixed inset-0 z-0">
         {isDarkTheme ? (

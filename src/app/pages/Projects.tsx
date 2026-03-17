@@ -48,14 +48,6 @@ export function Projects() {
   return (
     <div className="py-16 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <ScrollReveal className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight">Our Projects</h1>
-          <p className="text-lg text-gray-500 max-w-2xl mx-auto leading-relaxed">
-            Explore our innovative projects that push the boundaries of engineering and technology.
-          </p>
-        </ScrollReveal>
-
         {/* Filter Bar */}
         <ScrollReveal delay={100} className="flex flex-wrap gap-2 justify-center mb-12">
           {filters.map((f) => (

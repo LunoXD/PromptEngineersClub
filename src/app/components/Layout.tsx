@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
 import { Github, Twitter, Linkedin } from "lucide-react";
 import PillNav from "./PillNav";
-import logo from "../../assets/images/logonobg-optimized.png";
+import navLogo from "../../assets/images/logo.png";
+import footerLogo from "../../assets/images/logonobg-optimized.png";
 import { api } from "../lib/api";
 import { clearAuthToken, getAuthToken } from "../lib/auth";
 
@@ -99,10 +100,13 @@ export function Layout() {
       )}
 
       <div className="fixed top-4 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
-        <div className="pointer-events-auto">
+        <div className="pointer-events-auto flex items-center gap-3">
+          <img
+            src={navLogo}
+            alt="Prompt Engineers Club"
+            className="h-20 md:h-[5.5rem] w-auto object-contain"
+          />
           <PillNav
-            logo={logo}
-            logoAlt="Prompt Engineering"
             items={navItems}
             activeHref={pathname}
             baseColor="#111111"
@@ -124,7 +128,7 @@ export function Layout() {
             <div className="grid md:grid-cols-3 gap-10 mb-10">
               <div>
                 <Link to="/" className="flex items-center gap-2.5 mb-4">
-                  <img src={logo} alt="Prompt Engineering" className="w-8 h-8 rounded-lg object-contain" />
+                  <img src={footerLogo} alt="Prompt Engineering" className="w-8 h-8 rounded-lg object-contain" />
                   <span className="font-semibold text-sm text-white">Prompt Engineering Club</span>
                 </Link>
                 <p className="text-sm leading-relaxed text-gray-400 max-w-xs">

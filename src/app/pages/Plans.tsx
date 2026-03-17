@@ -64,17 +64,6 @@ export function Plans() {
   return (
     <div className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
       <div className="max-w-7xl mx-auto">
-        
-        {/* Header */}
-        <ScrollReveal className="text-center mb-16">
-          <h1 className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight">
-            Prompt Roadmap
-          </h1>
-          <p className="text-lg text-gray-500 max-w-2xl mx-auto leading-relaxed">
-            Explore our active prompt sessions, AI challenges, and collaborative innovation tracks.
-          </p>
-        </ScrollReveal>
-
         {/* Active Prompt Sessions */}
         <div className="mb-20">
           <ScrollReveal>

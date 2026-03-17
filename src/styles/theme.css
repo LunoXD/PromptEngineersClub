@@ -146,6 +146,8 @@
       radial-gradient(980px 540px at 105% 110%, var(--ambient-2), transparent 55%),
       linear-gradient(180deg, rgba(2, 6, 23, 0.95), rgba(2, 6, 23, 1));
     min-height: 100vh;
+    margin: 0;
+    overscroll-behavior-y: none;
   }
 
   /**

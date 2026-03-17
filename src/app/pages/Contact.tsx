@@ -1,4 +1,4 @@
-import { Mail, Phone, MapPin, Send } from "lucide-react";
+import { Send } from "lucide-react";
 import { useState } from "react";
 import { ScrollReveal } from "../components/ScrollReveal";
 
@@ -9,12 +9,40 @@ export function Contact() {
     subject: "",
     message: "",
   });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [submitSuccess, setSubmitSuccess] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form submitted:", formData);
-    alert("Thank you for your message! We'll get back to you soon.");
-    setFormData({ name: "", email: "", subject: "", message: "" });
+    setSubmitting(true);
+    setSubmitError("");
+    setSubmitSuccess("");
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        let message = "Failed to send message. Please try again.";
+        try {
+          const data = await response.json();
+          if (data?.message) message = data.message;
+        } catch {
+          // ignore parse errors
+        }
+        throw new Error(message);
+      }
+
+      setSubmitSuccess("Message sent successfully. We will get back to you soon.");
+      setFormData({ name: "", email: "", subject: "", message: "" });
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Failed to send message.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleChange = (
@@ -23,79 +51,51 @@ export function Contact() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const contactItems = [
-    {
-      icon: Mail,
-      title: "Email",
-      lines: ["2400030024@kluniversity.in", "deepak.yaramala@gmail.com"],
-    },
-    {
-      icon: Phone,
-      title: "Phone",
-      lines: ["8074524800","9347301082", "Mon–Fri, 9:00 AM – 5:00 PM"],
-    },
-    {
-      icon: MapPin,
-      title: "Location",
-      lines: ["SAC-HALL, Room :R-006", "University Campus"],
-    },
-  ];
-
   return (
-    <div className="py-10 px-4 sm:px-6 lg:px-8">
+    <div className="py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
         <ScrollReveal className="text-center mb-10">
-          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Contact Us</h1>
+          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white">Contact</h1>
         </ScrollReveal>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Contact Information */}
-          <ScrollReveal direction="left">
-            <div>
-              <h2 className="text-xl font-bold mb-2">Get in Touch</h2>
-              <p className="text-gray-500 mb-6 text-sm leading-relaxed">
-                Whether you're interested in joining our club, collaborating on a project, or have any questions, feel free to reach out through any of the following channels.
-              </p>
-
-              <div className="space-y-4 mb-6">
-                {contactItems.map(({ icon: Icon, title, lines }, i) => (
-                  <div key={i} className="flex items-start gap-4">
-                    <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center flex-shrink-0">
-                      <Icon className="text-white" size={16} />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold mb-1">{title}</h3>
-                      {lines.map((l, j) => (
-                        <p key={j} className="text-gray-500 text-sm">{l}</p>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+        <div className="grid lg:grid-cols-3 gap-6 items-start">
+          <ScrollReveal direction="left" className="lg:col-span-1">
+            <div className="rounded-2xl border border-white/15 bg-black/35 backdrop-blur-xl p-5 space-y-5">
+              <div>
+                <h2 className="text-lg font-semibold text-white">Join Our Discord</h2>
+                <p className="text-sm text-slate-300 mt-1">Hang out with the community and stay updated.</p>
               </div>
 
-              <div className="p-5 bg-gray-50 border border-gray-200 rounded-2xl">
-                <h3 className="font-semibold mb-2">Club Hours</h3>
-                <div className="space-y-1 text-sm text-gray-500">
-                  <p>Monday – Friday: 6:00 PM – 7:00 PM</p>
-                  <p>Saturday,Sunday: Closed</p>
-                   
-          
-                </div>
+              <div className="rounded-xl border border-white/10 overflow-hidden">
+                <iframe
+                  title="Prompt Engineering Club Discord"
+                  src="https://discord.com/widget?id=1483389840115368059&theme=dark"
+                  width="100%"
+                  height="420"
+                  frameBorder="0"
+                  sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
+                />
               </div>
             </div>
           </ScrollReveal>
 
-          {/* Contact Form */}
-          <ScrollReveal direction="right" delay={100}>
-            <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-              <h2 className="text-xl font-bold mb-5">Send us a Message</h2>
+          <ScrollReveal direction="right" delay={80} className="lg:col-span-2">
+            <div className="rounded-2xl border border-white/15 bg-black/35 backdrop-blur-xl p-6">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+                <h2 className="text-xl font-semibold text-white">Send a message</h2>
+                <a
+                  href="https://discord.gg/Ne5RnSvr"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center rounded-lg border border-indigo-300/40 bg-indigo-500/20 px-3 py-1.5 text-sm font-medium text-indigo-100 transition-all hover:bg-indigo-500/30 hover:border-indigo-200/70"
+                >
+                  Join Discord
+                </a>
+              </div>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="name" className="block text-sm font-medium mb-1.5 text-gray-700">
-                      Name
-                    </label>
+                    <label htmlFor="name" className="block text-sm font-medium mb-1.5 text-slate-200">Name</label>
                     <input
                       type="text"
                       id="name"
@@ -103,14 +103,12 @@ export function Contact() {
                       value={formData.name}
                       onChange={handleChange}
                       required
-                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black transition-all text-sm"
+                      className="w-full px-4 py-2.5 border border-white/15 rounded-xl bg-slate-950/55 text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-white/25 focus:border-white/40 transition-all text-sm"
                       placeholder="Your name"
                     />
                   </div>
                   <div>
-                    <label htmlFor="email" className="block text-sm font-medium mb-1.5 text-gray-700">
-                      Email
-                    </label>
+                    <label htmlFor="email" className="block text-sm font-medium mb-1.5 text-slate-200">Email</label>
                     <input
                       type="email"
                       id="email"
@@ -118,16 +116,14 @@ export function Contact() {
                       value={formData.email}
                       onChange={handleChange}
                       required
-                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black transition-all text-sm"
+                      className="w-full px-4 py-2.5 border border-white/15 rounded-xl bg-slate-950/55 text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-white/25 focus:border-white/40 transition-all text-sm"
                       placeholder="you@example.com"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label htmlFor="subject" className="block text-sm font-medium mb-1.5 text-gray-700">
-                    Subject
-                  </label>
+                  <label htmlFor="subject" className="block text-sm font-medium mb-1.5 text-slate-200">Subject</label>
                   <input
                     type="text"
                     id="subject"
@@ -135,34 +131,44 @@ export function Contact() {
                     value={formData.subject}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black transition-all text-sm"
+                    className="w-full px-4 py-2.5 border border-white/15 rounded-xl bg-slate-950/55 text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-white/25 focus:border-white/40 transition-all text-sm"
                     placeholder="What is this about?"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="message" className="block text-sm font-medium mb-1.5 text-gray-700">
-                    Message
-                  </label>
+                  <label htmlFor="message" className="block text-sm font-medium mb-1.5 text-slate-200">Message</label>
                   <textarea
                     id="message"
                     name="message"
                     value={formData.message}
                     onChange={handleChange}
                     required
-                    rows={5}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black transition-all resize-none text-sm"
+                    rows={6}
+                    className="w-full px-4 py-2.5 border border-white/15 rounded-xl bg-slate-950/55 text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-white/25 focus:border-white/40 transition-all resize-none text-sm"
                     placeholder="Tell us more about your inquiry..."
                   />
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full bg-black text-white px-6 py-3 rounded-xl hover:bg-gray-800 active:scale-95 transition-all flex items-center justify-center gap-2 font-medium"
+                  disabled={submitting}
+                  className="w-full bg-white text-black px-6 py-3 rounded-xl hover:bg-slate-200 active:scale-95 transition-all flex items-center justify-center gap-2 font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Send Message
+                  {submitting ? "Sending..." : "Send Message"}
                   <Send size={16} />
                 </button>
+
+                {submitSuccess && (
+                  <p className="text-sm text-emerald-200 bg-emerald-500/15 border border-emerald-300/30 rounded-xl px-3 py-2">
+                    {submitSuccess}
+                  </p>
+                )}
+                {submitError && (
+                  <p className="text-sm text-red-200 bg-red-500/15 border border-red-300/30 rounded-xl px-3 py-2">
+                    {submitError}
+                  </p>
+                )}
               </form>
             </div>
           </ScrollReveal>

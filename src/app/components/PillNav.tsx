@@ -9,8 +9,6 @@ export type PillNavItem = {
 };
 
 export interface PillNavProps {
-  logo: string;
-  logoAlt?: string;
   items: PillNavItem[];
   activeHref?: string;
   className?: string;
@@ -24,8 +22,6 @@ export interface PillNavProps {
 }
 
 const PillNav: React.FC<PillNavProps> = ({
-  logo,
-  logoAlt = 'Logo',
   items,
   activeHref,
   className = '',
@@ -42,12 +38,9 @@ const PillNav: React.FC<PillNavProps> = ({
   const circleRefs = useRef<Array<HTMLSpanElement | null>>([]);
   const tlRefs = useRef<Array<gsap.core.Timeline | null>>([]);
   const activeTweenRefs = useRef<Array<gsap.core.Tween | null>>([]);
-  const logoImgRef = useRef<HTMLImageElement | null>(null);
-  const logoTweenRef = useRef<gsap.core.Tween | null>(null);
   const hamburgerRef = useRef<HTMLButtonElement | null>(null);
   const mobileMenuRef = useRef<HTMLDivElement | null>(null);
   const navItemsRef = useRef<HTMLDivElement | null>(null);
-  const logoRef = useRef<HTMLAnchorElement | HTMLElement | null>(null);
 
   useEffect(() => {
     const layout = () => {
@@ -113,13 +106,7 @@ const PillNav: React.FC<PillNavProps> = ({
     }
 
     if (initialLoadAnimation) {
-      const logoEl = logoRef.current;
       const navItems = navItemsRef.current;
-
-      if (logoEl) {
-        gsap.set(logoEl, { scale: 0 });
-        gsap.to(logoEl, { scale: 1, duration: 0.6, ease });
-      }
 
       if (navItems) {
         gsap.set(navItems, { width: 0, overflow: 'hidden' });
@@ -146,19 +133,6 @@ const PillNav: React.FC<PillNavProps> = ({
     if (!tl) return;
     activeTweenRefs.current[i]?.kill();
     activeTweenRefs.current[i] = tl.tweenTo(0, {
-      duration: 0.2,
-      ease,
-      overwrite: 'auto',
-    });
-  };
-
-  const handleLogoEnter = () => {
-    const img = logoImgRef.current;
-    if (!img) return;
-    logoTweenRef.current?.kill();
-    gsap.set(img, { rotate: 0 });
-    logoTweenRef.current = gsap.to(img, {
-      rotate: 360,
       duration: 0.2,
       ease,
       overwrite: 'auto',
@@ -235,34 +209,9 @@ const PillNav: React.FC<PillNavProps> = ({
         aria-label="Primary"
         style={cssVars}
       >
-        {isRouterLink(items?.[0]?.href) ? (
-          <Link
-            to={items[0].href}
-            aria-label="Home"
-            onMouseEnter={handleLogoEnter}
-            role="menuitem"
-            ref={el => { logoRef.current = el; }}
-            className="rounded-full p-1.5 inline-flex items-center justify-center overflow-hidden border border-white/20 shadow-[0_14px_30px_-20px_rgba(30,64,175,0.9)]"
-            style={{ width: 'var(--nav-h)', height: 'var(--nav-h)', background: 'linear-gradient(180deg, rgba(2,6,23,0.95), rgba(15,23,42,0.95))' }}
-          >
-            <img src={logo} alt={logoAlt} ref={logoImgRef} className="w-full h-full object-contain block rounded-full" />
-          </Link>
-        ) : (
-          <a
-            href={items?.[0]?.href || '#'}
-            aria-label="Home"
-            onMouseEnter={handleLogoEnter}
-            ref={el => { logoRef.current = el; }}
-            className="rounded-full p-1.5 inline-flex items-center justify-center overflow-hidden border border-white/20 shadow-[0_14px_30px_-20px_rgba(30,64,175,0.9)]"
-            style={{ width: 'var(--nav-h)', height: 'var(--nav-h)', background: 'linear-gradient(180deg, rgba(2,6,23,0.95), rgba(15,23,42,0.95))' }}
-          >
-            <img src={logo} alt={logoAlt} ref={logoImgRef} className="w-full h-full object-contain block rounded-full" />
-          </a>
-        )}
-
         <div
           ref={navItemsRef}
-          className="relative items-center rounded-full hidden md:flex ml-2 border border-white/15 shadow-[0_18px_36px_-24px_rgba(15,23,42,0.95)]"
+          className="relative items-center rounded-full hidden md:flex border border-white/15 shadow-[0_18px_36px_-24px_rgba(15,23,42,0.95)]"
           style={{ height: 'var(--nav-h)', background: 'linear-gradient(180deg, rgba(2,6,23,0.95), rgba(15,23,42,0.95))' }}
         >
           <ul

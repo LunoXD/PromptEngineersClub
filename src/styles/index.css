@@ -4,6 +4,13 @@
 
 html {
   scroll-behavior: smooth;
+  background: #020617;
+  overscroll-behavior-y: none;
+}
+
+body,
+#root {
+  background: #020617;
 }
 
 .atmo-shell {

@@ -12,7 +12,7 @@ export function Signup() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (getAuthToken()) navigate('/server');
+    if (getAuthToken()) navigate('/');
   }, [navigate]);
 
   const onSubmit = async (e: FormEvent) => {
@@ -46,7 +46,7 @@ export function Signup() {
     <div className="max-w-md mx-auto px-4 py-16">
       <div className="rounded-3xl border border-white/15 bg-[linear-gradient(180deg,rgba(15,23,42,0.86),rgba(2,6,23,0.92))] p-6 shadow-[0_28px_70px_-44px_rgba(15,23,42,0.95)] backdrop-blur-xl">
         <h1 className="text-2xl font-bold mb-2 tracking-tight">Create Account</h1>
-        <p className="text-sm text-muted-foreground mb-6">Sign up to join the chat server.</p>
+        <p className="text-sm text-muted-foreground mb-6">Sign up to join the club portal.</p>
 
         <form onSubmit={onSubmit} className="space-y-4">
           <input

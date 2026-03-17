@@ -1,797 +1,640 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { Shield, Users, Server, LayoutDashboard, Newspaper, FolderKanban, UserCog, CalendarDays } from 'lucide-react';
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router";
 import {
-  api,
   AdminManagedServer,
   AdminManagedUser,
+  api,
   HomeContent,
   Plan,
   Project,
   TeamMember,
-} from '../lib/api';
+} from "../lib/api";
+import { getAuthToken } from "../lib/auth";
 
-const TOKEN_KEY = 'admin_token';
+type TabKey = "projects" | "team" | "plans" | "home" | "users" | "servers";
 
-const emptyProject: Partial<Project> = {
-  title: '',
-  description: '',
-  image: '',
-  link: '',
-  repoUrl: '',
+const tabs: Array<{ key: TabKey; label: string }> = [
+  { key: "projects", label: "Projects" },
+  { key: "team", label: "Team" },
+  { key: "plans", label: "Plans" },
+  { key: "home", label: "Home Content" },
+  { key: "users", label: "Users" },
+  { key: "servers", label: "Servers" },
+];
+
+const emptyProjectDraft: Omit<Project, "_id"> = {
+  title: "",
+  description: "",
+  image: "",
+  link: "",
+  repoUrl: "",
   tags: [],
-  status: 'Planning',
+  status: "Planning",
 };
 
-const emptyMember: Partial<TeamMember> = {
-  name: '',
-  role: '',
-  bio: '',
-  image: '',
-  linkedin: '',
-  github: '',
-  email: '',
+const emptyTeamDraft: Omit<TeamMember, "_id"> = {
+  name: "",
+  role: "",
+  bio: "",
+  image: "",
+  linkedin: "",
+  github: "",
+  email: "",
   order: 0,
 };
 
-const emptyPlan: Partial<Plan> = {
-  title: '',
-  type: '',
+const emptyPlanDraft: Omit<Plan, "_id"> = {
+  title: "",
+  type: "",
   attendees: 0,
-  description: '',
-  category: 'upcoming',
+  description: "",
+  category: "upcoming",
   order: 0,
 };
 
-function parseCommaList(value: string) {
-  return value
-    .split(',')
-    .map(v => v.trim())
-    .filter(Boolean);
-}
+const emptyHomeDraft: HomeContent = {
+  heroBadge: "",
+  heroDescription: "",
+  stats: [],
+  features: [],
+};
 
 export function Admin() {
-  const [token, setToken] = useState<string>(() => localStorage.getItem(TOKEN_KEY) || '');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
+  const navigate = useNavigate();
+  const [authChecked, setAuthChecked] = useState(false);
+  const [authorized, setAuthorized] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabKey>("projects");
+
+  const [loadingData, setLoadingData] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   const [projects, setProjects] = useState<Project[]>([]);
-  const [team, setTeam] = useState<TeamMember[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [users, setUsers] = useState<AdminManagedUser[]>([]);
   const [servers, setServers] = useState<AdminManagedServer[]>([]);
-  const [selectedServerId, setSelectedServerId] = useState('');
-  const [accessUserId, setAccessUserId] = useState('');
-  const [activeSection, setActiveSection] = useState<
-    'overview' | 'home' | 'projects' | 'team' | 'plans' | 'users' | 'servers'
-  >('overview');
-  const [home, setHome] = useState<HomeContent>({
-    heroBadge: '',
-    heroDescription: '',
-    stats: [],
-    features: [],
-  });
-  const [newProject, setNewProject] = useState<Partial<Project>>(emptyProject);
-  const [newMember, setNewMember] = useState<Partial<TeamMember>>(emptyMember);
-  const [newPlan, setNewPlan] = useState<Partial<Plan>>(emptyPlan);
 
-  const panelClass = 'space-y-4 rounded-2xl border border-border p-5 bg-card/70 text-foreground';
-  const inputClass = 'w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground';
-  const primaryButtonClass = 'rounded-lg bg-primary text-primary-foreground px-4 py-2 font-medium disabled:opacity-60 disabled:cursor-not-allowed';
-  const ghostButtonClass = 'rounded-lg border border-border bg-background/30 px-3 py-2 text-sm hover:bg-accent/60';
+  const [projectDraft, setProjectDraft] = useState<Omit<Project, "_id">>(emptyProjectDraft);
+  const [projectEditId, setProjectEditId] = useState<string | null>(null);
 
-  const loggedIn = useMemo(() => Boolean(token), [token]);
-  const selectedServer = useMemo(
-    () => servers.find((server) => server._id === selectedServerId) || null,
-    [servers, selectedServerId]
-  );
-  const usersWithoutAccess = useMemo(() => {
-    if (!selectedServer) return users;
-    const memberIds = new Set((selectedServer.members || []).map((member) => member._id));
-    return users.filter((user) => !memberIds.has(user._id));
-  }, [selectedServer, users]);
-  const totalServerMembers = useMemo(
-    () => servers.reduce((acc, server) => acc + (server.memberCount || 0), 0),
-    [servers]
-  );
+  const [teamDraft, setTeamDraft] = useState<Omit<TeamMember, "_id">>(emptyTeamDraft);
+  const [teamEditId, setTeamEditId] = useState<string | null>(null);
+
+  const [planDraft, setPlanDraft] = useState<Omit<Plan, "_id">>(emptyPlanDraft);
+  const [planEditId, setPlanEditId] = useState<string | null>(null);
+
+  const [homeDraft, setHomeDraft] = useState<HomeContent>(emptyHomeDraft);
+
+  const [accessUserByServer, setAccessUserByServer] = useState<Record<string, string>>({});
+
+  const token = useMemo(() => getAuthToken(), []);
+
+  const resetMessage = () => {
+    setError("");
+    setNotice("");
+  };
 
   const loadAll = async () => {
-    const [projectsData, teamData, homeData, plansData, usersData, serversData] = await Promise.all([
-      api.getProjects(),
-      api.getTeam(),
-      api.getHomeContent(),
-      api.getPlans(),
-      api.getAdminUsers(token),
-      api.getAdminServers(token),
-    ]);
-    setProjects(projectsData);
-    setTeam(teamData);
-    setHome(homeData);
-    setPlans(plansData);
-    setUsers(usersData);
-    setServers(serversData);
-    if (serversData.length > 0) {
-      setSelectedServerId((current) =>
-        current && serversData.some((server) => server._id === current)
-          ? current
-          : serversData[0]._id
-      );
-    } else {
-      setSelectedServerId('');
+    setLoadingData(true);
+    resetMessage();
+    try {
+      const [projectsRes, teamRes, plansRes, homeRes, usersRes, serversRes] = await Promise.all([
+        api.getProjects(),
+        api.getTeam(),
+        api.getPlans(),
+        api.getHomeContent(),
+        api.getAdminUsers(token),
+        api.getAdminServers(token),
+      ]);
+      setProjects(projectsRes);
+      setTeamMembers(teamRes);
+      setPlans(plansRes);
+      setHomeDraft({
+        _id: homeRes._id,
+        heroBadge: homeRes.heroBadge || "",
+        heroDescription: homeRes.heroDescription || "",
+        stats: Array.isArray(homeRes.stats) ? homeRes.stats : [],
+        features: Array.isArray(homeRes.features) ? homeRes.features : [],
+      });
+      setUsers(usersRes);
+      setServers(serversRes);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load admin data");
+    } finally {
+      setLoadingData(false);
     }
   };
 
   useEffect(() => {
-    if (!loggedIn) return;
-    api.verifyAdmin(token)
-      .then(async () => loadAll())
-      .catch(() => {
-        localStorage.removeItem(TOKEN_KEY);
-        setToken('');
-      });
-  }, [loggedIn, token]);
-
-  const handleLogin = async (e: FormEvent) => {
-    e.preventDefault();
-    const normalizedEmail = email.trim().toLowerCase();
-    if (!normalizedEmail || !password.trim()) {
-      setError('Email and password are required');
+    if (!token) {
+      navigate("/login");
       return;
     }
 
-    setBusy(true);
-    setError('');
+    let mounted = true;
+    api
+      .me(token)
+      .then((res) => {
+        if (!mounted) return;
+        if (res.user.role !== "admin") {
+          setAuthorized(false);
+          setAuthChecked(true);
+          navigate("/");
+          return;
+        }
+        setAuthorized(true);
+        setAuthChecked(true);
+        loadAll();
+      })
+      .catch(() => {
+        if (!mounted) return;
+        navigate("/login");
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [navigate, token]);
+
+  const handleProjectSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    resetMessage();
     try {
-      const result = await api.adminLogin(normalizedEmail, password);
-      localStorage.setItem(TOKEN_KEY, result.token);
-      setToken(result.token);
-      setEmail('');
-      setPassword('');
+      const payload = {
+        ...projectDraft,
+        tags: projectDraft.tags.filter(Boolean),
+      };
+      if (projectEditId) {
+        await api.updateProject(projectEditId, payload, token);
+        setNotice("Project updated");
+      } else {
+        await api.createProject(payload, token);
+        setNotice("Project created");
+      }
+      setProjectDraft(emptyProjectDraft);
+      setProjectEditId(null);
+      setProjects(await api.getProjects());
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : "Failed to save project");
     } finally {
-      setBusy(false);
+      setSaving(false);
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem(TOKEN_KEY);
-    setToken('');
-  };
-
-  const saveHome = async () => {
-    if (!token) return;
-    setBusy(true);
-    setError('');
+  const handleTeamSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    resetMessage();
     try {
-      const updated = await api.updateHomeContent(home, token);
-      setHome(updated);
+      if (teamEditId) {
+        await api.updateTeamMember(teamEditId, teamDraft, token);
+        setNotice("Team member updated");
+      } else {
+        await api.createTeamMember(teamDraft, token);
+        setNotice("Team member created");
+      }
+      setTeamDraft(emptyTeamDraft);
+      setTeamEditId(null);
+      setTeamMembers(await api.getTeam());
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update content');
+      setError(err instanceof Error ? err.message : "Failed to save team member");
     } finally {
-      setBusy(false);
+      setSaving(false);
     }
   };
 
-  const createProject = async () => {
-    if (!token) return;
-    setBusy(true);
-    setError('');
+  const handlePlanSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    resetMessage();
     try {
-      await api.createProject(newProject, token);
-      setNewProject(emptyProject);
-      await loadAll();
+      if (planEditId) {
+        await api.updatePlan(planEditId, planDraft, token);
+        setNotice("Plan updated");
+      } else {
+        await api.createPlan(planDraft, token);
+        setNotice("Plan created");
+      }
+      setPlanDraft(emptyPlanDraft);
+      setPlanEditId(null);
+      setPlans(await api.getPlans());
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create project');
+      setError(err instanceof Error ? err.message : "Failed to save plan");
     } finally {
-      setBusy(false);
+      setSaving(false);
     }
   };
 
-  const updateProject = async (item: Project) => {
-    if (!token) return;
-    setBusy(true);
-    setError('');
+  const saveHomeContent = async () => {
+    setSaving(true);
+    resetMessage();
     try {
-      await api.updateProject(item._id, item, token);
-      await loadAll();
+      const payload: HomeContent = {
+        heroBadge: homeDraft.heroBadge,
+        heroDescription: homeDraft.heroDescription,
+        stats: homeDraft.stats,
+        features: homeDraft.features,
+      };
+      const updated = await api.updateHomeContent(payload, token);
+      setHomeDraft(updated);
+      setNotice("Home content updated");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update project');
+      setError(err instanceof Error ? err.message : "Failed to update home content");
     } finally {
-      setBusy(false);
+      setSaving(false);
     }
   };
 
   const removeProject = async (id: string) => {
-    if (!token) return;
-    setBusy(true);
-    setError('');
+    setSaving(true);
+    resetMessage();
     try {
       await api.deleteProject(id, token);
-      await loadAll();
+      setProjects((prev) => prev.filter((p) => p._id !== id));
+      setNotice("Project deleted");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete project');
+      setError(err instanceof Error ? err.message : "Failed to delete project");
     } finally {
-      setBusy(false);
-    }
-  };
-
-  const createTeamMember = async () => {
-    if (!token) return;
-    setBusy(true);
-    setError('');
-    try {
-      await api.createTeamMember(newMember, token);
-      setNewMember(emptyMember);
-      await loadAll();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add team member');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const updateTeamMember = async (item: TeamMember) => {
-    if (!token) return;
-    setBusy(true);
-    setError('');
-    try {
-      await api.updateTeamMember(item._id, item, token);
-      await loadAll();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update team member');
-    } finally {
-      setBusy(false);
+      setSaving(false);
     }
   };
 
   const removeTeamMember = async (id: string) => {
-    if (!token) return;
-    setBusy(true);
-    setError('');
+    setSaving(true);
+    resetMessage();
     try {
       await api.deleteTeamMember(id, token);
-      await loadAll();
+      setTeamMembers((prev) => prev.filter((m) => m._id !== id));
+      setNotice("Team member deleted");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to remove team member');
+      setError(err instanceof Error ? err.message : "Failed to delete team member");
     } finally {
-      setBusy(false);
-    }
-  };
-
-  const createPlan = async () => {
-    if (!token) return;
-    setBusy(true);
-    setError('');
-    try {
-      await api.createPlan(newPlan, token);
-      setNewPlan(emptyPlan);
-      await loadAll();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add plan');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const updatePlan = async (item: Plan) => {
-    if (!token) return;
-    setBusy(true);
-    setError('');
-    try {
-      await api.updatePlan(item._id, item, token);
-      await loadAll();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update plan');
-    } finally {
-      setBusy(false);
+      setSaving(false);
     }
   };
 
   const removePlan = async (id: string) => {
-    if (!token) return;
-    setBusy(true);
-    setError('');
+    setSaving(true);
+    resetMessage();
     try {
       await api.deletePlan(id, token);
-      await loadAll();
+      setPlans((prev) => prev.filter((p) => p._id !== id));
+      setNotice("Plan deleted");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to remove plan');
+      setError(err instanceof Error ? err.message : "Failed to delete plan");
     } finally {
-      setBusy(false);
+      setSaving(false);
     }
   };
 
-  const updateUserRole = async (id: string, role: 'admin' | 'user') => {
-    if (!token) return;
-    setBusy(true);
-    setError('');
+  const updateUserRole = async (id: string, role: "admin" | "user") => {
+    setSaving(true);
+    resetMessage();
     try {
-      await api.updateAdminUserRole(id, role, token);
-      await loadAll();
+      const updated = await api.updateAdminUserRole(id, role, token);
+      setUsers((prev) => prev.map((u) => (u._id === updated._id ? { ...u, role: updated.role } : u)));
+      setNotice("User role updated");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update user role');
+      setError(err instanceof Error ? err.message : "Failed to update role");
     } finally {
-      setBusy(false);
+      setSaving(false);
     }
   };
 
-  const removeUser = async (id: string) => {
-    if (!token) return;
-    setBusy(true);
-    setError('');
+  const deleteUser = async (id: string) => {
+    setSaving(true);
+    resetMessage();
     try {
       await api.deleteAdminUser(id, token);
-      await loadAll();
+      setUsers((prev) => prev.filter((u) => u._id !== id));
+      setServers(await api.getAdminServers(token));
+      setNotice("User deleted");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete user');
+      setError(err instanceof Error ? err.message : "Failed to delete user");
     } finally {
-      setBusy(false);
+      setSaving(false);
     }
   };
 
-  const grantServerAccess = async () => {
-    if (!token || !selectedServerId || !accessUserId) return;
-    setBusy(true);
-    setError('');
+  const deleteServer = async (id: string) => {
+    setSaving(true);
+    resetMessage();
     try {
-      await api.setAdminServerAccess(selectedServerId, accessUserId, 'grant', token);
-      setAccessUserId('');
-      await loadAll();
+      await api.deleteAdminServer(id, token);
+      setServers((prev) => prev.filter((s) => s._id !== id));
+      setNotice("Server deleted");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to grant server access');
+      setError(err instanceof Error ? err.message : "Failed to delete server");
     } finally {
-      setBusy(false);
+      setSaving(false);
     }
   };
 
-  const revokeServerAccess = async (userId: string) => {
-    if (!token || !selectedServerId || !userId) return;
-    setBusy(true);
-    setError('');
+  const grantServerAccess = async (serverId: string) => {
+    const userId = accessUserByServer[serverId];
+    if (!userId) return;
+    setSaving(true);
+    resetMessage();
     try {
-      await api.setAdminServerAccess(selectedServerId, userId, 'revoke', token);
-      await loadAll();
+      const updated = await api.setAdminServerAccess(serverId, userId, "grant", token);
+      setServers((prev) => prev.map((s) => (s._id === updated._id ? { ...s, ...updated } : s)));
+      setNotice("Access granted");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to revoke server access');
+      setError(err instanceof Error ? err.message : "Failed to grant access");
     } finally {
-      setBusy(false);
+      setSaving(false);
     }
   };
 
-  const removeServer = async (serverId: string) => {
-    if (!token) return;
-    setBusy(true);
-    setError('');
+  const revokeServerAccess = async (serverId: string, userId: string) => {
+    setSaving(true);
+    resetMessage();
     try {
-      await api.deleteAdminServer(serverId, token);
-      await loadAll();
+      const updated = await api.setAdminServerAccess(serverId, userId, "revoke", token);
+      setServers((prev) => prev.map((s) => (s._id === updated._id ? { ...s, ...updated } : s)));
+      setNotice("Access revoked");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete server');
+      setError(err instanceof Error ? err.message : "Failed to revoke access");
     } finally {
-      setBusy(false);
+      setSaving(false);
     }
   };
 
-  const uploadImage = async (file: File, cb: (url: string) => void) => {
-    if (!token) return;
-    setBusy(true);
-    setError('');
-    try {
-      const result = await api.uploadImage(file, token);
-      cb(result.url);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (!loggedIn) {
-    return (
-      <div className="max-w-md mx-auto py-20 px-4">
-        <div className="rounded-3xl border border-border bg-card p-7 shadow-sm">
-          <div className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs text-muted-foreground mb-4">
-            <Shield size={14} />
-            Secure Admin Access
-          </div>
-          <h1 className="text-3xl font-bold mb-2">Admin Login</h1>
-          <p className="text-sm text-muted-foreground mb-6">Sign in with your administrator credentials to manage content, servers, and user access.</p>
-        <form onSubmit={handleLogin} className="space-y-4">
-          <input
-            className={inputClass}
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="Email"
-          />
-          <input
-            type="password"
-            className={inputClass}
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            placeholder="Password"
-          />
-          <button
-            type="submit"
-            disabled={busy}
-            className={`${primaryButtonClass} w-full`}
-          >
-            {busy ? 'Signing in...' : 'Login'}
-          </button>
-          {error && <p className="text-red-400 text-sm">{error}</p>}
-        </form>
-        </div>
-      </div>
-    );
+  if (!authChecked) {
+    return <div className="max-w-5xl mx-auto px-4 py-20 text-sm text-gray-500">Checking admin access...</div>;
   }
 
-  const navItems: Array<{ key: typeof activeSection; label: string; icon: typeof Shield }> = [
-    { key: 'overview', label: 'Overview', icon: LayoutDashboard },
-    { key: 'home', label: 'Homepage', icon: Newspaper },
-    { key: 'projects', label: 'Projects', icon: FolderKanban },
-    { key: 'team', label: 'Team', icon: Users },
-    { key: 'plans', label: 'Plans', icon: CalendarDays },
-    { key: 'users', label: 'Users', icon: UserCog },
-    { key: 'servers', label: 'Servers', icon: Server },
-  ];
+  if (!authorized) {
+    return <div className="max-w-5xl mx-auto px-4 py-20 text-sm text-red-500">Admin access required.</div>;
+  }
 
   return (
-    <div className="max-w-7xl mx-auto py-10 px-4 space-y-6">
-      <div className="rounded-3xl border border-border bg-card/70 p-5 md:p-6">
-        <div className="flex items-start md:items-center justify-between gap-4 flex-col md:flex-row">
-          <div>
-            <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground mb-1">Administration</p>
-            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          </div>
-          <button onClick={logout} className="rounded-lg border border-white/20 px-4 py-2">
-          Logout
-        </button>
-        </div>
-
-        <div className="mt-5 flex flex-wrap gap-2">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const active = activeSection === item.key;
-            return (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => setActiveSection(item.key)}
-                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                  active
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'border-border bg-background/50 hover:bg-accent/70'
-                }`}
-              >
-                <Icon size={14} />
-                {item.label}
-              </button>
-            );
-          })}
-        </div>
+    <div className="max-w-7xl mx-auto px-4 py-10 space-y-6">
+      <div className="rounded-2xl border border-white/10 bg-slate-950/80 p-6">
+        <h1 className="text-3xl font-bold text-white mb-2">Admin Dashboard</h1>
+        <p className="text-sm text-slate-300">Manage projects, team members, plans, homepage content, users, and servers.</p>
       </div>
 
-      {error && <p className="text-red-400 text-sm">{error}</p>}
-
-      {activeSection === 'overview' && (
-        <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <article className="rounded-2xl border border-border bg-card/70 p-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Users</p>
-            <p className="text-2xl font-semibold mt-2">{users.length}</p>
-          </article>
-          <article className="rounded-2xl border border-border bg-card/70 p-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Servers</p>
-            <p className="text-2xl font-semibold mt-2">{servers.length}</p>
-          </article>
-          <article className="rounded-2xl border border-border bg-card/70 p-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Server Memberships</p>
-            <p className="text-2xl font-semibold mt-2">{totalServerMembers}</p>
-          </article>
-          <article className="rounded-2xl border border-border bg-card/70 p-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Projects</p>
-            <p className="text-2xl font-semibold mt-2">{projects.length}</p>
-          </article>
-        </section>
-      )}
-
-      {activeSection === 'home' && (
-      <section className={panelClass}>
-        <h2 className="text-xl font-semibold">Homepage Content</h2>
-        <input
-          className={inputClass}
-          value={home.heroBadge}
-          onChange={e => setHome(prev => ({ ...prev, heroBadge: e.target.value }))}
-          placeholder="Hero badge"
-        />
-        <textarea
-          className={inputClass}
-          value={home.heroDescription}
-          onChange={e => setHome(prev => ({ ...prev, heroDescription: e.target.value }))}
-          placeholder="Hero description"
-          rows={3}
-        />
-
-        <div className="grid md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm mb-2">Stats (JSON array)</label>
-            <textarea
-              className={inputClass}
-              rows={6}
-              value={JSON.stringify(home.stats, null, 2)}
-              onChange={e => {
-                try {
-                  const parsed = JSON.parse(e.target.value);
-                  setHome(prev => ({ ...prev, stats: parsed }));
-                } catch {
-                  // ignore while typing
-                }
-              }}
-            />
-          </div>
-          <div>
-            <label className="block text-sm mb-2">Features (JSON array)</label>
-            <textarea
-              className={inputClass}
-              rows={6}
-              value={JSON.stringify(home.features, null, 2)}
-              onChange={e => {
-                try {
-                  const parsed = JSON.parse(e.target.value);
-                  setHome(prev => ({ ...prev, features: parsed }));
-                } catch {
-                  // ignore while typing
-                }
-              }}
-            />
-          </div>
-        </div>
-
-        <button onClick={saveHome} disabled={busy} className={primaryButtonClass}>
-          Save Homepage Content
+      <div className="flex flex-wrap gap-2">
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`px-4 py-2 rounded-full text-sm font-medium border transition ${
+              activeTab === tab.key
+                ? "bg-white text-black border-white"
+                : "bg-black/40 text-white border-white/20 hover:bg-black/60"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+        <button
+          onClick={loadAll}
+          className="ml-auto px-4 py-2 rounded-full text-sm border border-white/20 text-white hover:bg-black/40"
+          disabled={loadingData}
+        >
+          {loadingData ? "Refreshing..." : "Refresh"}
         </button>
-      </section>
-      )}
+      </div>
 
-      {activeSection === 'projects' && (
-      <section className={panelClass}>
-        <h2 className="text-xl font-semibold">Project Management</h2>
-        <div className="grid md:grid-cols-2 gap-3">
-          <input className={inputClass} placeholder="Title" value={newProject.title || ''} onChange={e => setNewProject(p => ({ ...p, title: e.target.value }))} />
-          <select className={inputClass} value={newProject.status || 'Planning'} onChange={e => setNewProject(p => ({ ...p, status: e.target.value as Project['status'] }))}>
-            <option>Planning</option>
-            <option>In Progress</option>
-            <option>Completed</option>
-          </select>
-          <textarea className={`md:col-span-2 ${inputClass}`} rows={3} placeholder="Description" value={newProject.description || ''} onChange={e => setNewProject(p => ({ ...p, description: e.target.value }))} />
-          <input className={inputClass} placeholder="Project link" value={newProject.link || ''} onChange={e => setNewProject(p => ({ ...p, link: e.target.value }))} />
-          <input className={inputClass} placeholder="Repo URL" value={newProject.repoUrl || ''} onChange={e => setNewProject(p => ({ ...p, repoUrl: e.target.value }))} />
-          <input className={`md:col-span-2 ${inputClass}`} placeholder="Tags (comma separated)" value={(newProject.tags || []).join(', ')} onChange={e => setNewProject(p => ({ ...p, tags: parseCommaList(e.target.value) }))} />
-          <input className={`md:col-span-2 ${inputClass}`} placeholder="Image URL (or upload below)" value={newProject.image || ''} onChange={e => setNewProject(p => ({ ...p, image: e.target.value }))} />
-          <input className="md:col-span-2" type="file" accept="image/*" onChange={e => {
-            const file = e.target.files?.[0];
-            if (file) uploadImage(file, url => setNewProject(p => ({ ...p, image: url })));
-          }} />
-          <button onClick={createProject} disabled={busy} className={`md:col-span-2 ${primaryButtonClass}`}>Create Project</button>
-        </div>
+      {error && <p className="rounded-xl border border-red-500/40 bg-red-950/30 text-red-300 px-3 py-2 text-sm">{error}</p>}
+      {notice && <p className="rounded-xl border border-emerald-500/40 bg-emerald-950/30 text-emerald-300 px-3 py-2 text-sm">{notice}</p>}
 
-        <div className="space-y-3">
-          {projects.map(item => (
-            <div key={item._id} className="rounded-xl border border-border p-3 space-y-2 bg-background/40">
-              <input className={inputClass} value={item.title} onChange={e => setProjects(prev => prev.map(p => p._id === item._id ? { ...p, title: e.target.value } : p))} />
-              <textarea className={inputClass} rows={2} value={item.description} onChange={e => setProjects(prev => prev.map(p => p._id === item._id ? { ...p, description: e.target.value } : p))} />
-              <div className="flex gap-2">
-                <button className={primaryButtonClass} onClick={() => updateProject(item)}>Save</button>
-                <button className="rounded-lg border border-red-400 text-red-300 px-3 py-1" onClick={() => removeProject(item._id)}>Delete</button>
-              </div>
+      {activeTab === "projects" && (
+        <div className="grid lg:grid-cols-[380px_1fr] gap-6">
+          <form onSubmit={handleProjectSubmit} className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 space-y-3">
+            <h2 className="text-lg font-semibold text-white">{projectEditId ? "Edit Project" : "Create Project"}</h2>
+            <input className="w-full rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="Title" value={projectDraft.title} onChange={(e) => setProjectDraft((d) => ({ ...d, title: e.target.value }))} required />
+            <textarea className="w-full rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="Description" value={projectDraft.description} onChange={(e) => setProjectDraft((d) => ({ ...d, description: e.target.value }))} required />
+            <input className="w-full rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="Image URL" value={projectDraft.image || ""} onChange={(e) => setProjectDraft((d) => ({ ...d, image: e.target.value }))} />
+            <input className="w-full rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="Details Link" value={projectDraft.link || ""} onChange={(e) => setProjectDraft((d) => ({ ...d, link: e.target.value }))} />
+            <input className="w-full rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="Repo URL" value={projectDraft.repoUrl || ""} onChange={(e) => setProjectDraft((d) => ({ ...d, repoUrl: e.target.value }))} />
+            <input
+              className="w-full rounded-lg bg-slate-800 border border-white/10 px-3 py-2"
+              placeholder="Tags (comma separated)"
+              value={projectDraft.tags.join(", ")}
+              onChange={(e) => setProjectDraft((d) => ({ ...d, tags: e.target.value.split(",").map((v) => v.trim()) }))}
+            />
+            <select className="w-full rounded-lg bg-slate-800 border border-white/10 px-3 py-2" value={projectDraft.status} onChange={(e) => setProjectDraft((d) => ({ ...d, status: e.target.value as Project["status"] }))}>
+              <option value="Planning">Planning</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+            </select>
+            <div className="flex gap-2">
+              <button disabled={saving} className="px-4 py-2 rounded-lg bg-white text-black font-medium">{projectEditId ? "Update" : "Create"}</button>
+              {projectEditId && (
+                <button type="button" onClick={() => { setProjectEditId(null); setProjectDraft(emptyProjectDraft); }} className="px-4 py-2 rounded-lg border border-white/20">Cancel</button>
+              )}
             </div>
-          ))}
-        </div>
-      </section>
-      )}
+          </form>
 
-      {activeSection === 'team' && (
-      <section className={panelClass}>
-        <h2 className="text-xl font-semibold">Team Management</h2>
-        <div className="grid md:grid-cols-2 gap-3">
-          <input className={inputClass} placeholder="Name" value={newMember.name || ''} onChange={e => setNewMember(p => ({ ...p, name: e.target.value }))} />
-          <input className={inputClass} placeholder="Role" value={newMember.role || ''} onChange={e => setNewMember(p => ({ ...p, role: e.target.value }))} />
-          <textarea className={`md:col-span-2 ${inputClass}`} rows={2} placeholder="Bio" value={newMember.bio || ''} onChange={e => setNewMember(p => ({ ...p, bio: e.target.value }))} />
-          <input className={inputClass} placeholder="Image URL (or upload below)" value={newMember.image || ''} onChange={e => setNewMember(p => ({ ...p, image: e.target.value }))} />
-          <input className={inputClass} placeholder="Email" value={newMember.email || ''} onChange={e => setNewMember(p => ({ ...p, email: e.target.value }))} />
-          <input className={inputClass} placeholder="LinkedIn URL" value={newMember.linkedin || ''} onChange={e => setNewMember(p => ({ ...p, linkedin: e.target.value }))} />
-          <input className={inputClass} placeholder="GitHub URL" value={newMember.github || ''} onChange={e => setNewMember(p => ({ ...p, github: e.target.value }))} />
-          <input className={inputClass} type="number" placeholder="Display order" value={newMember.order || 0} onChange={e => setNewMember(p => ({ ...p, order: Number(e.target.value) }))} />
-          <input className="md:col-span-2" type="file" accept="image/*" onChange={e => {
-            const file = e.target.files?.[0];
-            if (file) uploadImage(file, url => setNewMember(p => ({ ...p, image: url })));
-          }} />
-          <button onClick={createTeamMember} disabled={busy} className={`md:col-span-2 ${primaryButtonClass}`}>Add Team Member</button>
-        </div>
-
-        <div className="space-y-3">
-          {team.map(item => (
-            <div key={item._id} className="rounded-xl border border-border p-3 space-y-2 bg-background/40">
-              <input className={inputClass} value={item.name} onChange={e => setTeam(prev => prev.map(m => m._id === item._id ? { ...m, name: e.target.value } : m))} />
-              <input className={inputClass} value={item.role} onChange={e => setTeam(prev => prev.map(m => m._id === item._id ? { ...m, role: e.target.value } : m))} />
-              <div className="flex gap-2">
-                <button className={primaryButtonClass} onClick={() => updateTeamMember(item)}>Save</button>
-                <button className="rounded-lg border border-red-400 text-red-300 px-3 py-1" onClick={() => removeTeamMember(item._id)}>Delete</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-      )}
-
-      {activeSection === 'plans' && (
-      <section className={panelClass}>
-        <h2 className="text-xl font-semibold">Plans Management</h2>
-        <div className="grid md:grid-cols-2 gap-3">
-          <input className={inputClass} placeholder="Title" value={newPlan.title || ''} onChange={e => setNewPlan(p => ({ ...p, title: e.target.value }))} />
-          <input className={inputClass} placeholder="Type (Prompt Lab, Expert Session...)" value={newPlan.type || ''} onChange={e => setNewPlan(p => ({ ...p, type: e.target.value }))} />
-          <textarea className={`md:col-span-2 ${inputClass}`} rows={2} placeholder="Description" value={newPlan.description || ''} onChange={e => setNewPlan(p => ({ ...p, description: e.target.value }))} />
-          <select className={inputClass} value={newPlan.category || 'upcoming'} onChange={e => setNewPlan(p => ({ ...p, category: e.target.value as Plan['category'] }))}>
-            <option value="upcoming">upcoming</option>
-            <option value="recurring">recurring</option>
-          </select>
-          <input className={inputClass} type="number" placeholder="Attendees" value={newPlan.attendees || 0} onChange={e => setNewPlan(p => ({ ...p, attendees: Number(e.target.value) }))} />
-          <input className={inputClass} type="number" placeholder="Order" value={newPlan.order || 0} onChange={e => setNewPlan(p => ({ ...p, order: Number(e.target.value) }))} />
-          <button onClick={createPlan} disabled={busy} className={`md:col-span-2 ${primaryButtonClass}`}>Create Plan</button>
-        </div>
-
-        <div className="space-y-3">
-          {plans.map(item => (
-            <div key={item._id} className="rounded-xl border border-border p-3 space-y-2 bg-background/40">
-              <input className={inputClass} value={item.title} onChange={e => setPlans(prev => prev.map(p => p._id === item._id ? { ...p, title: e.target.value } : p))} />
-              <textarea className={inputClass} rows={2} value={item.description} onChange={e => setPlans(prev => prev.map(p => p._id === item._id ? { ...p, description: e.target.value } : p))} />
-              <div className="grid md:grid-cols-3 gap-2">
-                <input className={inputClass} value={item.type} onChange={e => setPlans(prev => prev.map(p => p._id === item._id ? { ...p, type: e.target.value } : p))} />
-                <select className={inputClass} value={item.category} onChange={e => setPlans(prev => prev.map(p => p._id === item._id ? { ...p, category: e.target.value as Plan['category'] } : p))}>
-                  <option value="upcoming">upcoming</option>
-                  <option value="recurring">recurring</option>
-                </select>
-                <input className={inputClass} type="number" value={item.attendees ?? 0} onChange={e => setPlans(prev => prev.map(p => p._id === item._id ? { ...p, attendees: Number(e.target.value) } : p))} />
-              </div>
-              <div className="flex gap-2">
-                <button className={primaryButtonClass} onClick={() => updatePlan(item)}>Save</button>
-                <button className="rounded-lg border border-red-400 text-red-300 px-3 py-1" onClick={() => removePlan(item._id)}>Delete</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-      )}
-
-      {activeSection === 'users' && (
-        <section className={panelClass}>
-          <h2 className="text-xl font-semibold">User Access Management</h2>
-          <div className="space-y-2">
-            {users.map((user) => (
-              <div key={user._id} className="rounded-xl border border-border bg-background/35 p-3 flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold truncate">{user.username}</p>
-                  <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+          <div className="space-y-3">
+            {projects.map((project) => (
+              <div key={project._id} className="rounded-xl border border-white/10 bg-black/40 p-4">
+                <div className="flex flex-wrap items-start gap-2 justify-between">
+                  <div>
+                    <p className="font-semibold text-white">{project.title}</p>
+                    <p className="text-xs text-slate-300">{project.status}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => { setProjectEditId(project._id); setProjectDraft({ ...project, tags: project.tags || [] }); }} className="px-3 py-1.5 rounded-md border border-white/20 text-sm">Edit</button>
+                    <button type="button" onClick={() => removeProject(project._id)} className="px-3 py-1.5 rounded-md border border-red-400/40 text-sm text-red-300">Delete</button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <select
-                    className={inputClass}
-                    value={user.role}
-                    onChange={(event) => updateUserRole(user._id, event.target.value as 'admin' | 'user')}
-                    disabled={busy}
-                  >
-                    <option value="user">user</option>
-                    <option value="admin">admin</option>
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => removeUser(user._id)}
-                    disabled={busy}
-                    className="rounded-lg border border-red-400 text-red-300 px-3 py-2 text-sm disabled:opacity-60"
-                  >
-                    Delete
-                  </button>
-                </div>
+                <p className="text-sm text-slate-300 mt-2">{project.description}</p>
               </div>
             ))}
           </div>
-        </section>
+        </div>
       )}
 
-      {activeSection === 'servers' && (
-        <section className={panelClass}>
-          <h2 className="text-xl font-semibold">Server Access Management</h2>
-
-          <div className="grid lg:grid-cols-[280px_1fr] gap-4">
-            <div className="space-y-2">
-              {servers.map((server) => (
-                <button
-                  key={server._id}
-                  type="button"
-                  onClick={() => setSelectedServerId(server._id)}
-                  className={`w-full text-left rounded-xl border p-3 transition-colors ${
-                    selectedServerId === server._id
-                      ? 'border-primary bg-primary/10'
-                      : 'border-border bg-background/40 hover:bg-accent/60'
-                  }`}
-                >
-                  <p className="font-semibold truncate">{server.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{server.memberCount} member(s)</p>
-                </button>
-              ))}
-            </div>
-
-            <div className="rounded-2xl border border-border bg-background/30 p-4 space-y-4">
-              {!selectedServer ? (
-                <p className="text-sm text-muted-foreground">Select a server to manage member access.</p>
-              ) : (
-                <>
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h3 className="text-lg font-semibold">{selectedServer.name}</h3>
-                      <p className="text-xs text-muted-foreground">Owner: {selectedServer.owner?.username || 'Unknown'}</p>
-                    </div>
-                    <button
-                      type="button"
-                      className="rounded-lg border border-red-400 text-red-300 px-3 py-2 text-sm disabled:opacity-60"
-                      disabled={busy || selectedServer.isDefault}
-                      onClick={() => removeServer(selectedServer._id)}
-                    >
-                      Delete Server
-                    </button>
-                  </div>
-
-                  <div className="rounded-xl border border-border p-3 space-y-2">
-                    <p className="text-sm font-medium">Grant Access</p>
-                    <div className="flex flex-col md:flex-row gap-2">
-                      <select
-                        className={inputClass}
-                        value={accessUserId}
-                        onChange={(e) => setAccessUserId(e.target.value)}
-                      >
-                        <option value="">Select user</option>
-                        {usersWithoutAccess.map((user) => (
-                          <option key={user._id} value={user._id}>
-                            {user.username} ({user.email})
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        onClick={grantServerAccess}
-                        disabled={busy || !accessUserId}
-                        className={primaryButtonClass}
-                      >
-                        Grant
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">Current Members</p>
-                    {selectedServer.members.map((member) => (
-                      <div key={member._id} className="rounded-xl border border-border bg-background/40 p-3 flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-medium truncate">{member.username}</p>
-                          <p className="text-xs text-muted-foreground truncate">{member.email} - {member.role}</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => revokeServerAccess(member._id)}
-                          disabled={busy || selectedServer.owner?._id === member._id}
-                          className={ghostButtonClass}
-                        >
-                          Revoke
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </>
+      {activeTab === "team" && (
+        <div className="grid lg:grid-cols-[380px_1fr] gap-6">
+          <form onSubmit={handleTeamSubmit} className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 space-y-3">
+            <h2 className="text-lg font-semibold text-white">{teamEditId ? "Edit Team Member" : "Add Team Member"}</h2>
+            <input className="w-full rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="Name" value={teamDraft.name} onChange={(e) => setTeamDraft((d) => ({ ...d, name: e.target.value }))} required />
+            <input className="w-full rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="Role" value={teamDraft.role} onChange={(e) => setTeamDraft((d) => ({ ...d, role: e.target.value }))} required />
+            <textarea className="w-full rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="Bio" value={teamDraft.bio || ""} onChange={(e) => setTeamDraft((d) => ({ ...d, bio: e.target.value }))} />
+            <input className="w-full rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="Image URL" value={teamDraft.image || ""} onChange={(e) => setTeamDraft((d) => ({ ...d, image: e.target.value }))} />
+            <input className="w-full rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="LinkedIn URL" value={teamDraft.linkedin || ""} onChange={(e) => setTeamDraft((d) => ({ ...d, linkedin: e.target.value }))} />
+            <input className="w-full rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="GitHub URL" value={teamDraft.github || ""} onChange={(e) => setTeamDraft((d) => ({ ...d, github: e.target.value }))} />
+            <input className="w-full rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="Email" value={teamDraft.email || ""} onChange={(e) => setTeamDraft((d) => ({ ...d, email: e.target.value }))} />
+            <input type="number" className="w-full rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="Order" value={teamDraft.order || 0} onChange={(e) => setTeamDraft((d) => ({ ...d, order: Number(e.target.value) }))} />
+            <div className="flex gap-2">
+              <button disabled={saving} className="px-4 py-2 rounded-lg bg-white text-black font-medium">{teamEditId ? "Update" : "Create"}</button>
+              {teamEditId && (
+                <button type="button" onClick={() => { setTeamEditId(null); setTeamDraft(emptyTeamDraft); }} className="px-4 py-2 rounded-lg border border-white/20">Cancel</button>
               )}
             </div>
+          </form>
+
+          <div className="space-y-3">
+            {teamMembers.map((member) => (
+              <div key={member._id} className="rounded-xl border border-white/10 bg-black/40 p-4">
+                <div className="flex flex-wrap items-start gap-2 justify-between">
+                  <div>
+                    <p className="font-semibold text-white">{member.name}</p>
+                    <p className="text-xs text-slate-300">{member.role}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => { setTeamEditId(member._id); setTeamDraft({ ...member }); }} className="px-3 py-1.5 rounded-md border border-white/20 text-sm">Edit</button>
+                    <button type="button" onClick={() => removeTeamMember(member._id)} className="px-3 py-1.5 rounded-md border border-red-400/40 text-sm text-red-300">Delete</button>
+                  </div>
+                </div>
+                <p className="text-sm text-slate-300 mt-2">{member.bio}</p>
+              </div>
+            ))}
           </div>
-        </section>
+        </div>
+      )}
+
+      {activeTab === "plans" && (
+        <div className="grid lg:grid-cols-[380px_1fr] gap-6">
+          <form onSubmit={handlePlanSubmit} className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 space-y-3">
+            <h2 className="text-lg font-semibold text-white">{planEditId ? "Edit Plan" : "Create Plan"}</h2>
+            <input className="w-full rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="Title" value={planDraft.title} onChange={(e) => setPlanDraft((d) => ({ ...d, title: e.target.value }))} required />
+            <input className="w-full rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="Type" value={planDraft.type} onChange={(e) => setPlanDraft((d) => ({ ...d, type: e.target.value }))} required />
+            <textarea className="w-full rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="Description" value={planDraft.description} onChange={(e) => setPlanDraft((d) => ({ ...d, description: e.target.value }))} required />
+            <input type="number" className="w-full rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="Attendees" value={planDraft.attendees || 0} onChange={(e) => setPlanDraft((d) => ({ ...d, attendees: Number(e.target.value) }))} />
+            <select className="w-full rounded-lg bg-slate-800 border border-white/10 px-3 py-2" value={planDraft.category} onChange={(e) => setPlanDraft((d) => ({ ...d, category: e.target.value as Plan["category"] }))}>
+              <option value="upcoming">Upcoming</option>
+              <option value="recurring">Recurring</option>
+            </select>
+            <input type="number" className="w-full rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="Order" value={planDraft.order || 0} onChange={(e) => setPlanDraft((d) => ({ ...d, order: Number(e.target.value) }))} />
+            <div className="flex gap-2">
+              <button disabled={saving} className="px-4 py-2 rounded-lg bg-white text-black font-medium">{planEditId ? "Update" : "Create"}</button>
+              {planEditId && (
+                <button type="button" onClick={() => { setPlanEditId(null); setPlanDraft(emptyPlanDraft); }} className="px-4 py-2 rounded-lg border border-white/20">Cancel</button>
+              )}
+            </div>
+          </form>
+
+          <div className="space-y-3">
+            {plans.map((plan) => (
+              <div key={plan._id} className="rounded-xl border border-white/10 bg-black/40 p-4">
+                <div className="flex flex-wrap items-start gap-2 justify-between">
+                  <div>
+                    <p className="font-semibold text-white">{plan.title}</p>
+                    <p className="text-xs text-slate-300">{plan.category} | {plan.type}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => { setPlanEditId(plan._id); setPlanDraft({ ...plan }); }} className="px-3 py-1.5 rounded-md border border-white/20 text-sm">Edit</button>
+                    <button type="button" onClick={() => removePlan(plan._id)} className="px-3 py-1.5 rounded-md border border-red-400/40 text-sm text-red-300">Delete</button>
+                  </div>
+                </div>
+                <p className="text-sm text-slate-300 mt-2">{plan.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === "home" && (
+        <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 space-y-4">
+          <h2 className="text-lg font-semibold text-white">Home Content</h2>
+          <input className="w-full rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="Hero badge" value={homeDraft.heroBadge} onChange={(e) => setHomeDraft((d) => ({ ...d, heroBadge: e.target.value }))} />
+          <textarea className="w-full rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="Hero description" value={homeDraft.heroDescription} onChange={(e) => setHomeDraft((d) => ({ ...d, heroDescription: e.target.value }))} />
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium text-white">Stats</h3>
+              <button type="button" className="px-3 py-1.5 rounded-md border border-white/20 text-sm" onClick={() => setHomeDraft((d) => ({ ...d, stats: [...d.stats, { label: "", value: "" }] }))}>Add Stat</button>
+            </div>
+            {homeDraft.stats.map((stat, index) => (
+              <div key={`${index}-${stat.label}`} className="grid md:grid-cols-[1fr_1fr_auto] gap-2">
+                <input className="rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="Label" value={stat.label} onChange={(e) => setHomeDraft((d) => ({ ...d, stats: d.stats.map((s, i) => (i === index ? { ...s, label: e.target.value } : s)) }))} />
+                <input className="rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="Value" value={stat.value} onChange={(e) => setHomeDraft((d) => ({ ...d, stats: d.stats.map((s, i) => (i === index ? { ...s, value: e.target.value } : s)) }))} />
+                <button type="button" className="px-3 py-2 rounded-lg border border-red-400/40 text-red-300" onClick={() => setHomeDraft((d) => ({ ...d, stats: d.stats.filter((_, i) => i !== index) }))}>Remove</button>
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium text-white">Features</h3>
+              <button type="button" className="px-3 py-1.5 rounded-md border border-white/20 text-sm" onClick={() => setHomeDraft((d) => ({ ...d, features: [...d.features, { icon: "Lightbulb", title: "", desc: "", link: "", cta: "" }] }))}>Add Feature</button>
+            </div>
+            {homeDraft.features.map((feature, index) => (
+              <div key={`${index}-${feature.title}`} className="rounded-xl border border-white/10 p-3 space-y-2">
+                <div className="grid md:grid-cols-2 gap-2">
+                  <select className="rounded-lg bg-slate-800 border border-white/10 px-3 py-2" value={feature.icon || "Lightbulb"} onChange={(e) => setHomeDraft((d) => ({ ...d, features: d.features.map((f, i) => (i === index ? { ...f, icon: e.target.value } : f)) }))}>
+                    <option value="Users">Users</option>
+                    <option value="Lightbulb">Lightbulb</option>
+                    <option value="Calendar">Calendar</option>
+                  </select>
+                  <input className="rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="Title" value={feature.title} onChange={(e) => setHomeDraft((d) => ({ ...d, features: d.features.map((f, i) => (i === index ? { ...f, title: e.target.value } : f)) }))} />
+                </div>
+                <textarea className="w-full rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="Description" value={feature.desc} onChange={(e) => setHomeDraft((d) => ({ ...d, features: d.features.map((f, i) => (i === index ? { ...f, desc: e.target.value } : f)) }))} />
+                <div className="grid md:grid-cols-2 gap-2">
+                  <input className="rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="Link" value={feature.link || ""} onChange={(e) => setHomeDraft((d) => ({ ...d, features: d.features.map((f, i) => (i === index ? { ...f, link: e.target.value } : f)) }))} />
+                  <input className="rounded-lg bg-slate-800 border border-white/10 px-3 py-2" placeholder="CTA text" value={feature.cta || ""} onChange={(e) => setHomeDraft((d) => ({ ...d, features: d.features.map((f, i) => (i === index ? { ...f, cta: e.target.value } : f)) }))} />
+                </div>
+                <button type="button" className="px-3 py-2 rounded-lg border border-red-400/40 text-red-300" onClick={() => setHomeDraft((d) => ({ ...d, features: d.features.filter((_, i) => i !== index) }))}>Remove Feature</button>
+              </div>
+            ))}
+          </div>
+
+          <button type="button" disabled={saving} onClick={saveHomeContent} className="px-4 py-2 rounded-lg bg-white text-black font-medium">Save Home Content</button>
+        </div>
+      )}
+
+      {activeTab === "users" && (
+        <div className="space-y-3">
+          {users.map((user) => (
+            <div key={user._id} className="rounded-xl border border-white/10 bg-black/40 p-4 flex flex-wrap items-center gap-3 justify-between">
+              <div>
+                <p className="font-medium text-white">{user.username}</p>
+                <p className="text-xs text-slate-300">{user.email}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <select className="rounded-lg bg-slate-800 border border-white/10 px-3 py-2" value={user.role} onChange={(e) => updateUserRole(user._id, e.target.value as "admin" | "user") }>
+                  <option value="user">user</option>
+                  <option value="admin">admin</option>
+                </select>
+                <button type="button" onClick={() => deleteUser(user._id)} className="px-3 py-2 rounded-lg border border-red-400/40 text-red-300">Delete</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {activeTab === "servers" && (
+        <div className="space-y-4">
+          {servers.map((server) => (
+            <div key={server._id} className="rounded-xl border border-white/10 bg-black/40 p-4 space-y-3">
+              <div className="flex flex-wrap justify-between gap-3">
+                <div>
+                  <p className="font-semibold text-white">{server.name}</p>
+                  <p className="text-xs text-slate-300">Owner: {server.owner?.username || "Unknown"} | Members: {server.memberCount}</p>
+                </div>
+                <button type="button" onClick={() => deleteServer(server._id)} disabled={Boolean(server.isDefault)} className="px-3 py-2 rounded-lg border border-red-400/40 text-red-300 disabled:opacity-40">Delete Server</button>
+              </div>
+
+              <div className="flex flex-wrap gap-2 items-center">
+                <select className="rounded-lg bg-slate-800 border border-white/10 px-3 py-2" value={accessUserByServer[server._id] || ""} onChange={(e) => setAccessUserByServer((prev) => ({ ...prev, [server._id]: e.target.value }))}>
+                  <option value="">Select user to grant access</option>
+                  {users.map((user) => (
+                    <option key={user._id} value={user._id}>{user.username} ({user.email})</option>
+                  ))}
+                </select>
+                <button type="button" onClick={() => grantServerAccess(server._id)} className="px-3 py-2 rounded-lg border border-white/20">Grant Access</button>
+              </div>
+
+              <div className="space-y-2">
+                {server.members.map((member) => (
+                  <div key={member._id} className="flex flex-wrap items-center justify-between gap-2 border border-white/10 rounded-lg px-3 py-2">
+                    <p className="text-sm text-white">{member.username} <span className="text-xs text-slate-300">({member.role})</span></p>
+                    <button type="button" onClick={() => revokeServerAccess(server._id, member._id)} className="text-xs px-2.5 py-1.5 rounded-md border border-red-400/40 text-red-300">Revoke</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

@@ -10,7 +10,6 @@ import { NotFound } from "./pages/NotFound";
 import { RouteError } from "./pages/RouteError";
 import { Login } from "./pages/Login";
 import { Signup } from "./pages/Signup";
-import { ServerChat } from "./pages/ServerChat";
 
 export const router = createBrowserRouter([
   {
@@ -26,7 +25,6 @@ export const router = createBrowserRouter([
       { path: "admin", Component: Admin },
       { path: "login", Component: Login },
       { path: "signup", Component: Signup },
-      { path: "server", Component: ServerChat },
       { path: "*", Component: NotFound },
     ],
   },

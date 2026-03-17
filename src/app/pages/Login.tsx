@@ -14,7 +14,7 @@ export function Login() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (getAuthToken()) navigate('/server');
+    if (getAuthToken()) navigate('/');
   }, [navigate]);
 
   const onSubmit = async (e: FormEvent) => {
@@ -30,7 +30,7 @@ export function Login() {
     try {
       const result = await api.login({ email: normalizedEmail, password });
       setAuthToken(result.token);
-      navigate('/server');
+      navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
@@ -87,7 +87,7 @@ export function Login() {
                   try {
                     const result = await api.googleLogin(credentialResponse.credential);
                     setAuthToken(result.token);
-                    navigate('/server');
+                    navigate('/');
                   } catch (err) {
                     setError(err instanceof Error ? err.message : 'Google login failed');
                   }
@@ -121,7 +121,7 @@ export function Login() {
             </div>
             <h2 className="text-lg font-bold text-white mb-2">Join Prompt Community</h2>
             <p className="text-sm text-slate-400 max-w-[220px]">
-              Access your servers, mentions, replies, and reactions in one place.
+              Connect with the club, explore projects, and stay updated in one place.
             </p>
           </div>
         </div>

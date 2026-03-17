@@ -24,7 +24,6 @@ const footerLinks = [
 export function Layout() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const isServerRoute = pathname.startsWith("/server");
 
   useEffect(() => {
     const root = document.documentElement;
@@ -34,6 +33,7 @@ export function Layout() {
   }, []);
 
   const [isLoggedIn, setIsLoggedIn] = useState(() => Boolean(getAuthToken()));
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const updateAuth = () => setIsLoggedIn(Boolean(getAuthToken()));
@@ -42,8 +42,34 @@ export function Layout() {
     return () => window.removeEventListener("storage", updateAuth);
   }, [pathname]);
 
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token) {
+      setIsAdmin(false);
+      return;
+    }
+
+    let mounted = true;
+    api
+      .me(token)
+      .then((res) => {
+        if (!mounted) return;
+        setIsAdmin(res.user.role === "admin");
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setIsAdmin(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [pathname, isLoggedIn]);
+
   const navItems = isLoggedIn
-    ? [...baseNavItems, { label: "Server", href: "/server" }]
+    ? isAdmin
+      ? [...baseNavItems, { label: "Admin", href: "/admin" }]
+      : [...baseNavItems]
     : [...baseNavItems, { label: "Login", href: "/login" }];
 
   const handleLogout = async () => {
@@ -61,14 +87,8 @@ export function Layout() {
   };
 
   return (
-    <div
-      className={
-        isServerRoute
-          ? "min-h-screen bg-[#313338]"
-          : "atmo-shell min-h-screen bg-[radial-gradient(900px_420px_at_4%_-5%,rgba(37,99,235,0.16),transparent_52%),radial-gradient(980px_480px_at_110%_112%,rgba(99,102,241,0.16),transparent_52%)]"
-      }
-    >
-      {isLoggedIn && !isServerRoute && (
+    <div className="atmo-shell min-h-screen bg-[radial-gradient(900px_420px_at_4%_-5%,rgba(37,99,235,0.16),transparent_52%),radial-gradient(980px_480px_at_110%_112%,rgba(99,102,241,0.16),transparent_52%)]">
+      {isLoggedIn && (
         <button
           type="button"
           onClick={handleLogout}
@@ -78,31 +98,28 @@ export function Layout() {
         </button>
       )}
 
-      {!isServerRoute && (
-        <div className="fixed top-4 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
-          <div className="pointer-events-auto">
-            <PillNav
-              logo={logo}
-              logoAlt="Prompt Engineering"
-              items={navItems}
-              activeHref={pathname}
-              baseColor="#111111"
-              pillColor="#ffffff"
-              pillTextColor="#111111"
-              hoveredPillTextColor="#ffffff"
-              ease="power2.out"
-              initialLoadAnimation={false}
-            />
-          </div>
+      <div className="fixed top-4 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
+        <div className="pointer-events-auto">
+          <PillNav
+            logo={logo}
+            logoAlt="Prompt Engineering"
+            items={navItems}
+            activeHref={pathname}
+            baseColor="#111111"
+            pillColor="#ffffff"
+            pillTextColor="#111111"
+            hoveredPillTextColor="#ffffff"
+            ease="power2.out"
+            initialLoadAnimation={false}
+          />
         </div>
-      )}
+      </div>
 
-      <main className={isServerRoute ? "pt-0" : "pt-20"}>
+      <main className="pt-20">
         <Outlet />
       </main>
 
-      {!isServerRoute && (
-        <footer className="text-gray-300 mt-20 px-3 sm:px-4 md:px-6">
+      <footer className="text-gray-300 mt-20 px-3 sm:px-4 md:px-6">
           <div className="max-w-7xl mx-auto rounded-3xl border border-white/10 bg-[linear-gradient(180deg,rgba(17,24,39,0.92),rgba(3,7,18,0.96))] shadow-[0_28px_70px_-45px_rgba(15,23,42,0.95)] px-4 sm:px-6 lg:px-8 py-12">
             <div className="grid md:grid-cols-3 gap-10 mb-10">
               <div>
@@ -156,8 +173,7 @@ export function Layout() {
               <p className="text-xs text-gray-600">&copy; 2026 Prompt Engineering Club. All rights reserved.</p>
             </div>
           </div>
-        </footer>
-      )}
+      </footer>
     </div>
   );
 }
